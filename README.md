@@ -8,7 +8,12 @@ runs entirely in the browser with no backend.
 
 ## Live site
 
-Hosted on GitHub Pages: `https://YOURNAME.github.io/API-surface-mapper/`
+Hosted on GitHub Pages: https://tbgh011.github.io/API-surface-mapper/
+
+A quickstart guide ships alongside it at
+[`/quickstart-guide.html`](https://tbgh011.github.io/API-surface-mapper/quickstart-guide.html),
+covering how to read the evidence tiers, how to verify candidates from a
+terminal, and what the tool deliberately does not claim.
 
 ## Usage
 
@@ -26,6 +31,9 @@ lines to confirm each candidate from a terminal.
 Each finding also carries a small OWASP chip linking to the specific risk
 category, and a **Security review guidance** panel below the results explains the
 categories your findings touch.
+
+The quickstart guide walks through all of this in more detail, including a table
+of every spec path probed and how to interpret each status code you get back.
 
 ## How it works, and its limits
 
@@ -46,8 +54,11 @@ purpose so it can be hosted for free with no maintenance.
 ## OWASP API Security Top 10 mapping
 
 Findings are mapped to the [OWASP API Security Top 10
-(2023)](https://owasp.org/API-Security/) so the output points you toward what to
-review, not just what exists. The mapping is intentionally conservative:
+(2023)](https://owasp.org/projects/api-security-project) so the output points you
+toward what to review, not just what exists. Risk links point at the project
+repository, which renders the 2023 edition text and survived the owasp.org site
+redesign that retired the old `/API-Security/` documentation URLs. The mapping is
+intentionally conservative:
 
 - Live hosts map by name. An `auth` or `sso` host points to API2 Broken
   Authentication, a `graphql` host to API4 Unrestricted Resource Consumption, a
@@ -74,13 +85,19 @@ of a flaw.
 
 ## Deploy
 
-1. Put `index.html` at the repo root.
+1. Put `index.html` and `quickstart-guide.html` at the repo root.
 2. Repo **Settings**, **Pages**, Source: Deploy from a branch, pick your branch
    and the root folder.
 3. Open the `github.io` URL Pages gives you.
 
 Opening the file inside the repo file browser shows the source only. The Pages
 URL is what actually runs it.
+
+## Files
+
+- `index.html` - the tool. Single file, vanilla JS, no build step.
+- `quickstart-guide.html` - the usage guide, linked from the tool's header and
+  footer.
 
 ## License
 

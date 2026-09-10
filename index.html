@@ -1,0 +1,604 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>API Surface Mapper</title>
+<style>
+  :root{
+    --bg:#0d1220;
+    --panel:#161d2e;
+    --panel-2:#1b2439;
+    --border:#26304a;
+    --border-soft:#1f2840;
+    --text:#c9d3e8;
+    --text-dim:#8291b0;
+    --text-faint:#5f6d8c;
+    /* evidence tiers carry meaning, not decoration */
+    --documented:#6fcf97;  /* real spec URL from public directory */
+    --live:#ffb454;        /* hostname resolves via DNS */
+    --candidate:#5aa9e6;   /* plausible, browser cannot read it */
+    --danger:#e06c6c;
+    --sans: ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+    --mono: ui-monospace, "SF Mono", "JetBrains Mono", Menlo, Consolas, monospace;
+  }
+  *{box-sizing:border-box}
+  html,body{margin:0}
+  body{
+    background:
+      radial-gradient(1200px 600px at 15% -10%, #17203a 0%, transparent 55%),
+      var(--bg);
+    color:var(--text);
+    font-family:var(--sans);
+    line-height:1.5;
+    -webkit-font-smoothing:antialiased;
+    min-height:100vh;
+  }
+  .wrap{max-width:860px;margin:0 auto;padding:36px 20px 80px}
+
+  header h1{
+    font-size:26px;
+    font-weight:640;
+    letter-spacing:-0.02em;
+    margin:0 0 6px;
+  }
+  header p.lede{
+    margin:0 0 22px;
+    color:var(--text-dim);
+    max-width:62ch;
+    font-size:15px;
+  }
+
+  /* command bar: the interactive heart of the page */
+  .console{
+    background:var(--panel);
+    border:1px solid var(--border);
+    border-radius:12px;
+    padding:6px 6px 6px 16px;
+    display:flex;
+    align-items:center;
+    gap:10px;
+    box-shadow:0 1px 0 #0a0f1c inset, 0 8px 30px rgba(0,0,0,.35);
+  }
+  .console .glyph{
+    color:var(--live);
+    font-family:var(--mono);
+    font-size:16px;
+    user-select:none;
+  }
+  .console input{
+    flex:1;
+    background:transparent;
+    border:0;
+    outline:0;
+    color:var(--text);
+    font-family:var(--mono);
+    font-size:16px;
+    padding:12px 0;
+    letter-spacing:0.01em;
+  }
+  .console input::placeholder{color:var(--text-faint)}
+  .console button{
+    background:var(--live);
+    color:#241701;
+    border:0;
+    border-radius:8px;
+    font-family:var(--sans);
+    font-weight:640;
+    font-size:14px;
+    padding:11px 20px;
+    cursor:pointer;
+    transition:filter .12s ease, transform .06s ease;
+  }
+  .console button:hover{filter:brightness(1.06)}
+  .console button:active{transform:translateY(1px)}
+  .console button:disabled{filter:grayscale(.4) brightness(.7);cursor:not-allowed}
+
+  .note{
+    margin:12px 2px 0;
+    font-size:12.5px;
+    color:var(--text-faint);
+    max-width:70ch;
+  }
+  .note code{font-family:var(--mono);color:var(--text-dim)}
+
+  /* legend */
+  .legend{display:flex;flex-wrap:wrap;gap:14px 22px;margin:26px 2px 8px}
+  .legend .item{display:flex;align-items:center;gap:8px;font-size:12.5px;color:var(--text-dim)}
+  .dot{width:9px;height:9px;border-radius:50%;flex:none}
+  .dot.documented{background:var(--documented)}
+  .dot.live{background:var(--live)}
+  .dot.candidate{background:var(--candidate)}
+
+  /* status strip */
+  .status{
+    margin-top:18px;
+    display:none;
+    font-family:var(--mono);
+    font-size:13px;
+    color:var(--text-dim);
+    background:var(--panel-2);
+    border:1px solid var(--border-soft);
+    border-radius:8px;
+    padding:10px 14px;
+  }
+  .status.on{display:block}
+  .status .bar{
+    height:3px;margin-top:9px;border-radius:2px;overflow:hidden;
+    background:#0e1526;
+  }
+  .status .bar > i{
+    display:block;height:100%;width:0;
+    background:linear-gradient(90deg,var(--live),var(--documented));
+    transition:width .3s ease;
+  }
+
+  /* summary counters */
+  .summary{display:none;gap:10px;margin-top:20px;flex-wrap:wrap}
+  .summary.on{display:flex}
+  .summary .stat{
+    flex:1;min-width:120px;
+    background:var(--panel);
+    border:1px solid var(--border-soft);
+    border-radius:10px;
+    padding:12px 14px;
+  }
+  .summary .stat b{display:block;font-size:22px;font-weight:680;font-family:var(--mono)}
+  .summary .stat span{font-size:12px;color:var(--text-dim)}
+  .stat.documented b{color:var(--documented)}
+  .stat.live b{color:var(--live)}
+  .stat.candidate b{color:var(--candidate)}
+
+  /* result groups */
+  .group{margin-top:28px}
+  .group > h2{
+    font-size:14px;font-weight:620;margin:0 0 4px;
+    display:flex;align-items:center;gap:9px;
+  }
+  .group > h2 .count{
+    font-family:var(--mono);font-size:12px;color:var(--text-faint);font-weight:500;
+  }
+  .group > .blurb{margin:0 0 12px;font-size:12.5px;color:var(--text-dim)}
+
+  .row{
+    display:flex;align-items:flex-start;gap:12px;
+    background:var(--panel);
+    border:1px solid var(--border-soft);
+    border-left-width:3px;
+    border-radius:9px;
+    padding:12px 14px;
+    margin-bottom:8px;
+    word-break:break-all;
+  }
+  .row.documented{border-left-color:var(--documented)}
+  .row.live{border-left-color:var(--live)}
+  .row.candidate{border-left-color:var(--candidate)}
+  .row .main{flex:1;min-width:0}
+  .row .url{
+    font-family:var(--mono);font-size:13.5px;color:var(--text);
+    text-decoration:none;
+  }
+  .row a.url:hover{text-decoration:underline}
+  .row .meta{margin-top:4px;font-size:12px;color:var(--text-dim);word-break:normal}
+  .row .meta .k{color:var(--text-faint)}
+  .tag{
+    font-family:var(--mono);font-size:10.5px;font-weight:600;
+    padding:3px 7px;border-radius:5px;white-space:nowrap;
+    border:1px solid transparent;
+  }
+  .tag.documented{color:var(--documented);border-color:#2c4c3c;background:#12241b}
+  .tag.live{color:var(--live);border-color:#4d3c18;background:#241b0d}
+  .tag.candidate{color:var(--candidate);border-color:#243f57;background:#0f1e2b}
+
+  .empty{
+    color:var(--text-faint);font-size:13px;
+    padding:14px;border:1px dashed var(--border-soft);border-radius:9px;
+  }
+
+  .actions{display:none;margin-top:22px;gap:10px;flex-wrap:wrap}
+  .actions.on{display:flex}
+  .actions button{
+    background:var(--panel-2);color:var(--text);
+    border:1px solid var(--border);border-radius:8px;
+    font-family:var(--sans);font-size:13px;font-weight:560;
+    padding:9px 14px;cursor:pointer;
+  }
+  .actions button:hover{border-color:var(--text-faint)}
+
+  footer{margin-top:46px;color:var(--text-faint);font-size:12px;max-width:70ch}
+  footer a{color:var(--text-dim)}
+
+  @media (max-width:560px){
+    .console{flex-wrap:wrap;padding:14px}
+    .console input{width:100%;padding:6px 0}
+    .console button{width:100%}
+  }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <h1>API Surface Mapper</h1>
+    <p class="lede">Enter a domain and this maps the public API surface a browser can reach: hostnames that resolve, endpoints listed in a public API directory, and spec files it can read directly. It runs entirely in your browser.</p>
+  </header>
+
+  <div class="console">
+    <span class="glyph">&#9656;</span>
+    <input id="domain" type="text" autocomplete="off" spellcheck="false"
+           placeholder="stripe.com" aria-label="Domain to scan">
+    <button id="run">Map surface</button>
+  </div>
+
+  <p class="note">
+    A browser cannot crawl a domain the way a server can. Cross-origin rules (CORS) stop it from reading responses off hosts you do not control, so anything unreadable is reported as a candidate to check yourself, not a confirmed API. Nothing here sends traffic through my servers.
+  </p>
+
+  <div class="legend" aria-hidden="true">
+    <div class="item"><span class="dot documented"></span> Documented: real spec URL from a public directory</div>
+    <div class="item"><span class="dot live"></span> Live host: resolves via DNS right now</div>
+    <div class="item"><span class="dot candidate"></span> Verify manually: plausible, browser cannot read it</div>
+  </div>
+
+  <div class="status" id="status">
+    <span id="statusText">Ready.</span>
+    <div class="bar"><i id="bar"></i></div>
+  </div>
+
+  <div class="summary" id="summary">
+    <div class="stat documented"><b id="cDoc">0</b><span>documented</span></div>
+    <div class="stat live"><b id="cLive">0</b><span>live hosts</span></div>
+    <div class="stat candidate"><b id="cCand">0</b><span>to verify</span></div>
+  </div>
+
+  <div id="results"></div>
+
+  <div class="actions" id="actions">
+    <button id="copyCurl">Copy verification commands</button>
+    <button id="copyJson">Copy results as JSON</button>
+  </div>
+
+  <footer>
+    Evidence sources: DNS-over-HTTPS (Google, Cloudflare) for host resolution, the
+    <a href="https://apis.guru" target="_blank" rel="noopener">APIs.guru</a> open directory for documented specs, and direct fetches for readable spec files. For exhaustive discovery (full subdomain enumeration, authenticated crawling, response inspection) you need a server-side scanner. Ask and I will give you that version.
+  </footer>
+</div>
+
+<script>
+(() => {
+  "use strict";
+
+  const $ = (id) => document.getElementById(id);
+  const el = { domain:$("domain"), run:$("run"), status:$("status"), statusText:$("statusText"),
+    bar:$("bar"), summary:$("summary"), results:$("results"), actions:$("actions"),
+    cDoc:$("cDoc"), cLive:$("cLive"), cCand:$("cCand") };
+
+  // ---- config -------------------------------------------------------------
+
+  // Hostnames commonly used to expose public APIs.
+  const API_HOSTS = [
+    "api","apis","api-gateway","gateway","gw","edge",
+    "developer","developers","dev","devapi",
+    "graphql","gql","rest","rpc",
+    "data","public-api","open-api","openapi",
+    "docs","apidocs","api-docs","reference",
+    "sandbox","api-sandbox","staging-api","api-staging","test-api",
+    "v1","v2","v3",
+    "services","service","backend","bff",
+    "mobile-api","app-api","partner","partners","integrations","connect",
+    "auth","oauth","id","identity","sso",
+    "webhook","webhooks","events","stream","streaming","realtime"
+  ];
+
+  // Well-known descriptor paths worth a direct read attempt.
+  const DESCRIPTOR_PATHS = [
+    "/openapi.json","/openapi.yaml",
+    "/swagger.json","/swagger/v1/swagger.json",
+    "/v3/api-docs","/v2/api-docs","/api-docs",
+    "/.well-known/openapi.json",
+    "/.well-known/openid-configuration",
+    "/.well-known/oauth-authorization-server",
+    "/.well-known/security.txt",
+    "/graphql"
+  ];
+
+  const DOH_ENDPOINTS = [
+    (name) => `https://dns.google/resolve?name=${encodeURIComponent(name)}&type=A`,
+    (name) => `https://cloudflare-dns.com/dns-query?name=${encodeURIComponent(name)}&type=A`
+  ];
+
+  let apisGuruCache = null;
+  let lastResults = null;
+
+  // ---- helpers ------------------------------------------------------------
+
+  function cleanDomain(raw){
+    let d = (raw || "").trim().toLowerCase();
+    d = d.replace(/^[a-z]+:\/\//, "").replace(/\/.*$/, "").replace(/:\d+$/, "");
+    if (d.startsWith("www.")) d = d.slice(4);
+    return d;
+  }
+  const isDomain = (d) => /^([a-z0-9-]+\.)+[a-z]{2,}$/.test(d);
+
+  async function fetchT(url, opts = {}, ms = 6500){
+    const c = new AbortController();
+    const t = setTimeout(() => c.abort(), ms);
+    try { return await fetch(url, { ...opts, signal:c.signal }); }
+    finally { clearTimeout(t); }
+  }
+
+  async function pool(items, worker, size = 10){
+    let i = 0;
+    const runners = Array.from({ length: Math.min(size, items.length) }, async () => {
+      while (i < items.length){ const idx = i++; await worker(items[idx], idx); }
+    });
+    await Promise.all(runners);
+  }
+
+  // DNS resolution via DoH. Returns resolved name chain or null.
+  async function resolves(host){
+    for (const build of DOH_ENDPOINTS){
+      try {
+        const r = await fetchT(build(host), { headers:{ accept:"application/dns-json" } }, 5000);
+        if (!r.ok) continue;
+        const j = await r.json();
+        if (j.Status === 0 && Array.isArray(j.Answer) && j.Answer.length){
+          const cname = j.Answer.find(a => a.type === 5);
+          return { host, via: cname ? cname.data.replace(/\.$/, "") : null };
+        }
+        if (j.Status === 0) return null; // answered, no record
+      } catch (_) { /* try next resolver */ }
+    }
+    return null;
+  }
+
+  // ---- rendering ----------------------------------------------------------
+
+  const state = { documented:[], live:[], candidate:[] };
+
+  function group(id, title, blurb){
+    let g = document.getElementById("g-" + id);
+    if (g) return g;
+    g = document.createElement("div");
+    g.className = "group";
+    g.id = "g-" + id;
+    g.innerHTML =
+      `<h2>${title} <span class="count" id="gc-${id}"></span></h2>` +
+      `<p class="blurb">${blurb}</p><div class="body" id="gb-${id}"></div>`;
+    el.results.appendChild(g);
+    return g;
+  }
+
+  function addRow(groupId, tier, { url, label, meta }){
+    const body = document.querySelector("#gb-" + groupId);
+    if (!body) return;
+    const row = document.createElement("div");
+    row.className = "row " + tier;
+    const safeUrl = url.replace(/"/g, "&quot;");
+    row.innerHTML =
+      `<div class="main">` +
+        `<a class="url" href="${safeUrl}" target="_blank" rel="noopener">${label || url}</a>` +
+        (meta ? `<div class="meta">${meta}</div>` : "") +
+      `</div>` +
+      `<span class="tag ${tier}">${tier === "documented" ? "documented" : tier === "live" ? "live host" : "verify"}</span>`;
+    body.appendChild(row);
+    const gc = document.querySelector("#gc-" + groupId);
+    if (gc) gc.textContent = body.children.length;
+  }
+
+  function bumpCounts(){
+    el.cDoc.textContent = state.documented.length;
+    el.cLive.textContent = state.live.length;
+    el.cCand.textContent = state.candidate.length;
+  }
+
+  function setStatus(text, pct){
+    el.status.classList.add("on");
+    el.statusText.textContent = text;
+    if (typeof pct === "number") el.bar.style.width = Math.min(100, pct) + "%";
+  }
+
+  // ---- phases -------------------------------------------------------------
+
+  async function directoryLookup(domain, sld){
+    try {
+      if (!apisGuruCache){
+        const r = await fetchT("https://api.apis.guru/v2/list.json", {}, 12000);
+        apisGuruCache = await r.json();
+      }
+    } catch (_) {
+      group("dir", "Documented APIs", "Could not reach the public directory from your browser.");
+      return;
+    }
+    group("dir", "Documented public APIs",
+      "Listed in the APIs.guru open directory with a machine-readable spec you can open now.");
+    const body = document.querySelector("#gb-dir");
+    let hits = 0;
+    for (const [key, entry] of Object.entries(apisGuruCache)){
+      const provider = key.split(":")[0].toLowerCase();
+      const match = provider === domain
+        || provider.endsWith("." + domain)
+        || domain.endsWith("." + provider)
+        || (sld.length >= 4 && provider.includes(sld));
+      if (!match) continue;
+      const versions = entry.versions || {};
+      const pref = entry.preferred && versions[entry.preferred] ? versions[entry.preferred]
+        : versions[Object.keys(versions)[0]];
+      if (!pref) continue;
+      const info = pref.info || {};
+      const spec = pref.swaggerUrl || pref.swaggerYamlUrl;
+      const docUrl = (info["x-apisguru-driver"] || info.contact && info.contact.url) || pref.link || spec;
+      state.documented.push({ provider, title: info.title || key, spec, doc: docUrl });
+      addRow("dir", "documented", {
+        url: spec || docUrl,
+        label: info.title || key,
+        meta: `<span class="k">provider</span> ${provider}` +
+              (spec ? ` &nbsp; <span class="k">spec</span> ${spec}` : "")
+      });
+      hits++;
+      if (hits >= 40) break;
+    }
+    if (!hits) body.innerHTML = `<div class="empty">No entries for this domain in the public directory.</div>`;
+    bumpCounts();
+  }
+
+  async function subdomainProbe(domain){
+    group("hosts", "Live API hosts",
+      "API-style hostnames that resolve in DNS right now. Resolving means the host exists, not that it is an open API.");
+    const body = document.querySelector("#gb-hosts");
+    const candidates = API_HOSTS.map(h => `${h}.${domain}`);
+    const found = [];
+    let done = 0;
+    await pool(candidates, async (host) => {
+      const res = await resolves(host);
+      done++;
+      setStatus(`Resolving hostnames: ${done}/${candidates.length}`, 20 + (done / candidates.length) * 45);
+      if (res){
+        found.push(host);
+        state.live.push(host);
+        addRow("hosts", "live", {
+          url: "https://" + host,
+          label: host,
+          meta: res.via ? `<span class="k">cname</span> ${res.via}` : `<span class="k">resolves</span> A record`
+        });
+        bumpCounts();
+      }
+    }, 12);
+    if (!found.length) body.innerHTML = `<div class="empty">No common API hostnames resolved for this domain.</div>`;
+    return found;
+  }
+
+  async function descriptorProbe(domain, liveHosts){
+    group("specs", "Readable and candidate endpoints",
+      "Direct reads of well-known spec paths. Readable ones are confirmed. The rest exist as URLs worth checking with the commands below.");
+    const body = document.querySelector("#gb-specs");
+    const origins = Array.from(new Set([domain, ...liveHosts])).slice(0, 8).map(h => "https://" + h);
+    const targets = [];
+    for (const o of origins) for (const p of DESCRIPTOR_PATHS) targets.push(o + p);
+
+    let done = 0, anyReadable = false;
+    await pool(targets, async (url) => {
+      done++;
+      setStatus(`Probing spec paths: ${done}/${targets.length}`, 65 + (done / targets.length) * 33);
+      try {
+        const r = await fetchT(url, { headers:{ accept:"application/json, text/plain, */*" } }, 5000);
+        if (!r.ok) return; // reachable but not a served spec
+        const ct = (r.headers.get("content-type") || "");
+        const text = await r.text();
+        let meta = `<span class="k">readable</span> ${r.status} ${ct.split(";")[0] || ""}`;
+        if (ct.includes("json") || text.trim().startsWith("{")){
+          try {
+            const j = JSON.parse(text);
+            const title = j.info && j.info.title;
+            const ver = j.info && j.info.version;
+            const servers = Array.isArray(j.servers) ? j.servers.map(s => s.url).filter(Boolean) : [];
+            if (title) meta += ` &nbsp; <span class="k">title</span> ${title}${ver ? " v" + ver : ""}`;
+            if (servers.length) meta += ` &nbsp; <span class="k">servers</span> ${servers.join(", ")}`;
+          } catch (_) {}
+        }
+        anyReadable = true;
+        state.documented.push({ readable: url });
+        addRow("specs", "documented", { url, label: url, meta });
+        bumpCounts();
+      } catch (_) {
+        // CORS block or no host: a candidate, only if its origin host actually resolved
+        const originHost = url.split("/")[2];
+        const originResolves = originHost === domain || liveHosts.includes(originHost);
+        if (originResolves){
+          state.candidate.push(url);
+          addRow("specs", "candidate", {
+            url, label: url,
+            meta: `<span class="k">blocked by CORS or not served</span> verify with the commands below`
+          });
+          bumpCounts();
+        }
+      }
+    }, 10);
+
+    if (!body.children.length){
+      body.innerHTML = `<div class="empty">No readable spec files, and no candidates on resolving hosts.</div>`;
+    } else if (!anyReadable){
+      const note = document.createElement("p");
+      note.className = "blurb";
+      note.style.marginTop = "10px";
+      note.textContent = "Nothing was directly readable. That is normal: most APIs block cross-origin reads. Use the verification commands to check the candidates.";
+      body.appendChild(note);
+    }
+  }
+
+  // ---- verification export ------------------------------------------------
+
+  function buildCurl(){
+    const urls = [...state.candidate];
+    if (!urls.length) return "# No unverified candidates. Everything found was either documented or a live host.\n";
+    const lines = [
+      "# Run these to confirm each candidate endpoint.",
+      "# -s silent, -o /dev/null discard body, -w print status + content-type.",
+      ""
+    ];
+    for (const u of urls){
+      lines.push(`curl -s -o /dev/null -w '%{http_code} %{content_type}  ${u}\\n' '${u}'`);
+    }
+    return lines.join("\n") + "\n";
+  }
+
+  async function copy(text, btn){
+    try { await navigator.clipboard.writeText(text); }
+    catch (_) {
+      const ta = document.createElement("textarea");
+      ta.value = text; document.body.appendChild(ta); ta.select();
+      try { document.execCommand("copy"); } catch (_){}
+      ta.remove();
+    }
+    const old = btn.textContent; btn.textContent = "Copied";
+    setTimeout(() => btn.textContent = old, 1400);
+  }
+
+  // ---- orchestration ------------------------------------------------------
+
+  async function run(){
+    const domain = cleanDomain(el.domain.value);
+    if (!isDomain(domain)){
+      setStatus("That does not look like a domain. Try a form like example.com.");
+      el.bar.style.width = "0%";
+      return;
+    }
+    el.domain.value = domain;
+    el.run.disabled = true;
+    el.results.innerHTML = "";
+    el.actions.classList.remove("on");
+    state.documented = []; state.live = []; state.candidate = [];
+    bumpCounts();
+    el.summary.classList.add("on");
+    setStatus("Checking the public API directory...", 8);
+
+    const sld = domain.split(".").slice(-2, -1)[0] || domain;
+
+    try {
+      await directoryLookup(domain, sld);
+      const liveHosts = await subdomainProbe(domain);
+      await descriptorProbe(domain, liveHosts);
+      setStatus(
+        `Done. ${state.documented.length} documented, ${state.live.length} live hosts, ${state.candidate.length} to verify.`,
+        100
+      );
+    } catch (e){
+      setStatus("Something went wrong during the scan: " + (e && e.message ? e.message : e));
+    } finally {
+      el.run.disabled = false;
+      lastResults = { domain, ...state };
+      el.actions.classList.add("on");
+    }
+  }
+
+  // ---- wiring -------------------------------------------------------------
+
+  el.run.addEventListener("click", run);
+  el.domain.addEventListener("keydown", (e) => { if (e.key === "Enter") run(); });
+  $("copyCurl").addEventListener("click", (e) => copy(buildCurl(), e.currentTarget));
+  $("copyJson").addEventListener("click", (e) =>
+    copy(JSON.stringify(lastResults || {}, null, 2), e.currentTarget));
+  el.domain.focus();
+})();
+</script>
+</body>
+</html>

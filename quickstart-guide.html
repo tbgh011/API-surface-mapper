@@ -1,0 +1,297 @@
+<!doctype html>
+<!-- Tony Bailey - API security project -->
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Quickstart guide - API Surface Mapper</title>
+<style>
+  :root{
+    --bg:#0d1220;
+    --panel:#161d2e;
+    --panel-2:#1b2439;
+    --border:#26304a;
+    --border-soft:#1f2840;
+    --text:#c9d3e8;
+    --text-dim:#8291b0;
+    --text-faint:#5f6d8c;
+    --documented:#6fcf97;
+    --live:#ffb454;
+    --candidate:#5aa9e6;
+    --danger:#e06c6c;
+    --sans: ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+    --mono: ui-monospace, "SF Mono", "JetBrains Mono", Menlo, Consolas, monospace;
+  }
+  *{box-sizing:border-box}
+  html,body{margin:0}
+  body{
+    background:
+      radial-gradient(1200px 600px at 15% -10%, #17203a 0%, transparent 55%),
+      var(--bg);
+    color:var(--text);
+    font-family:var(--sans);
+    line-height:1.6;
+    -webkit-font-smoothing:antialiased;
+    min-height:100vh;
+  }
+  .wrap{max-width:860px;margin:0 auto;padding:36px 20px 80px}
+
+  header h1{font-size:26px;font-weight:640;letter-spacing:-0.02em;margin:0 0 6px}
+  header p.lede{margin:0 0 10px;color:var(--text-dim);max-width:66ch;font-size:15px}
+  p.subnav{margin:0 0 30px;font-size:12.5px}
+  p.subnav a{color:var(--live);text-decoration:none;border-bottom:1px solid #4d3c18}
+  p.subnav a:hover{border-bottom-color:var(--live)}
+
+  h2{
+    font-size:15px;font-weight:640;margin:38px 0 8px;
+    padding-top:22px;border-top:1px solid var(--border-soft);
+  }
+  h2:first-of-type{border-top:0;padding-top:0;margin-top:30px}
+  h3{font-size:13.5px;font-weight:620;margin:20px 0 6px;color:var(--text)}
+  p{margin:0 0 12px;font-size:13.5px;color:var(--text-dim);max-width:76ch}
+  p strong, li strong{color:var(--text);font-weight:620}
+  a{color:var(--text-dim)}
+  code{
+    font-family:var(--mono);font-size:12.5px;color:var(--text);
+    background:var(--panel-2);border:1px solid var(--border-soft);
+    border-radius:4px;padding:1px 5px;
+  }
+  ul,ol{margin:0 0 12px;padding-left:20px;max-width:76ch}
+  li{font-size:13.5px;color:var(--text-dim);margin-bottom:6px}
+
+  /* numbered quickstart steps */
+  .steps{counter-reset:step;list-style:none;padding:0;margin:0 0 8px}
+  .steps > li{
+    counter-increment:step;
+    position:relative;
+    background:var(--panel);
+    border:1px solid var(--border-soft);
+    border-radius:9px;
+    padding:13px 15px 13px 50px;
+    margin-bottom:8px;
+    color:var(--text-dim);
+  }
+  .steps > li::before{
+    content:counter(step);
+    position:absolute;left:15px;top:12px;
+    width:22px;height:22px;border-radius:50%;
+    background:var(--panel-2);border:1px solid var(--border);
+    color:var(--live);font-family:var(--mono);font-size:11px;font-weight:660;
+    display:flex;align-items:center;justify-content:center;
+  }
+  .steps > li b{color:var(--text);font-weight:620}
+
+  /* evidence tier cards */
+  .tier{
+    background:var(--panel);
+    border:1px solid var(--border-soft);
+    border-left-width:3px;
+    border-radius:9px;
+    padding:13px 15px;
+    margin-bottom:8px;
+  }
+  .tier.documented{border-left-color:var(--documented)}
+  .tier.live{border-left-color:var(--live)}
+  .tier.candidate{border-left-color:var(--candidate)}
+  .tier h3{margin:0 0 5px;display:flex;align-items:center;gap:9px;flex-wrap:wrap}
+  .tier .tag{
+    font-family:var(--mono);font-size:10.5px;font-weight:600;
+    padding:3px 7px;border-radius:5px;white-space:nowrap;border:1px solid transparent;
+  }
+  .tag.documented{color:var(--documented);border-color:#2c4c3c;background:#12241b}
+  .tag.live{color:var(--live);border-color:#4d3c18;background:#241b0d}
+  .tag.candidate{color:var(--candidate);border-color:#243f57;background:#0f1e2b}
+  .tier p{margin:0 0 8px;font-size:12.5px}
+  .tier p:last-child{margin-bottom:0}
+  .tier .means{
+    font-size:12px;color:var(--text-faint);
+    border-top:1px solid var(--border-soft);padding-top:8px;margin-top:9px;
+  }
+  .tier .means b{color:var(--text-dim)}
+
+  pre{
+    background:#0e1526;border:1px solid var(--border-soft);border-radius:9px;
+    padding:13px 15px;overflow-x:auto;margin:0 0 14px;
+    font-family:var(--mono);font-size:12px;line-height:1.65;color:var(--text-dim);
+  }
+  pre .c{color:var(--text-faint)}
+
+  table{
+    width:100%;border-collapse:collapse;margin:0 0 14px;
+    font-size:12.5px;
+  }
+  th,td{
+    text-align:left;padding:9px 12px;
+    border-bottom:1px solid var(--border-soft);vertical-align:top;
+  }
+  th{color:var(--text);font-weight:620;font-size:12px}
+  td{color:var(--text-dim)}
+  td code{white-space:nowrap}
+  .tbl-scroll{overflow-x:auto}
+
+  .callout{
+    background:var(--panel);border:1px solid var(--border-soft);
+    border-left:3px solid var(--danger);border-radius:9px;
+    padding:13px 15px;margin:0 0 14px;
+  }
+  .callout p{margin:0;font-size:12.5px}
+  .callout b{color:var(--text)}
+
+  .note-box{
+    background:#191426;border:1px solid #362a46;border-radius:9px;
+    padding:13px 15px;margin:0 0 14px;
+  }
+  .note-box p{margin:0;font-size:12.5px}
+  .note-box b{color:var(--text)}
+
+  footer{margin-top:50px;padding-top:20px;border-top:1px solid var(--border-soft);
+    color:var(--text-faint);font-size:12px;max-width:70ch}
+  footer a{color:var(--text-dim)}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <h1>Quickstart guide</h1>
+    <p class="lede">How to run API Surface Mapper, how to read what it gives you, and what it deliberately does not claim.</p>
+    <p class="subnav"><a href="index.html">&#8592; Back to the mapper</a></p>
+  </header>
+
+  <h2>What this tool is for</h2>
+  <p>It answers one question: <strong>what public API surface does this domain expose that a browser can see from the outside?</strong> No login, no agent, no scanner to install. You type a domain and it assembles evidence from three independent sources in about twenty seconds.</p>
+  <p>Typical uses: a first pass on your own organization before someone else does it, a sanity check that a documented API catalog matches reality, or a quick look at a vendor or acquisition target during due diligence.</p>
+
+  <h2>Sixty-second quickstart</h2>
+  <ol class="steps">
+    <li><b>Enter a bare domain.</b> Use the registrable form, like <code>stripe.com</code>. Scheme, <code>www.</code>, ports and paths are stripped for you, so pasting a full URL is fine.</li>
+    <li><b>Press Map surface</b> or hit Enter. The status strip shows which phase is running.</li>
+    <li><b>Read the three counters.</b> Documented, live hosts, and to verify. They correspond to the three colors in the results below.</li>
+    <li><b>Work the amber and blue rows.</b> Green is already confirmed. Amber and blue are where your attention pays off.</li>
+    <li><b>Click Copy verification commands</b> and run them in a terminal. That converts blue candidates into facts.</li>
+    <li><b>Click Copy results as JSON</b> if you want to keep the run or diff it against a later one.</li>
+  </ol>
+
+  <h2>How to read the results</h2>
+  <p>Every row carries an evidence tier. The tier tells you how much the tool actually knows, which is the whole point of the design.</p>
+
+  <div class="tier documented">
+    <h3>Documented <span class="tag documented">documented</span></h3>
+    <p>Either the domain appears in the APIs.guru open directory with a machine-readable spec, or the browser successfully read a spec file directly from the host.</p>
+    <p class="means"><b>What it means:</b> the API is real, public, and described. Open the spec URL and you have the endpoint list, parameters and schemas without guessing.</p>
+  </div>
+
+  <div class="tier live">
+    <h3>Live host <span class="tag live">live host</span></h3>
+    <p>An API-style hostname such as <code>api.example.com</code> resolved in DNS at the moment you ran the scan.</p>
+    <p class="means"><b>What it means:</b> the name exists. It does <b>not</b> mean an API is listening, that it is open, or that it is in scope for testing. Resolution is existence, not exposure.</p>
+  </div>
+
+  <div class="tier candidate">
+    <h3>Verify manually <span class="tag candidate">verify</span></h3>
+    <p>A well-known spec path on a host that really resolves, which the browser could not read. Almost always this is a cross-origin block rather than a missing file, and the browser cannot tell the two apart.</p>
+    <p class="means"><b>What it means:</b> unknown, and worth thirty seconds of your time. This is the queue the verification commands exist to drain.</p>
+  </div>
+
+  <h2>What the scan actually does</h2>
+  <p>Three phases, in order.</p>
+
+  <h3>1. Directory lookup</h3>
+  <p>Fetches the <a href="https://apis.guru" target="_blank" rel="noopener">APIs.guru</a> list and matches your domain against known providers. Anything that matches comes with a real OpenAPI or Swagger URL. This phase produces the green rows.</p>
+
+  <h3>2. Hostname resolution</h3>
+  <p>Builds roughly forty five API-style hostnames from a fixed wordlist and resolves each one over DNS-over-HTTPS, using Google and Cloudflare as resolvers. The wordlist covers the usual shapes: <code>api</code>, <code>gateway</code>, <code>graphql</code>, <code>developer</code>, version prefixes like <code>v1</code>, environment names like <code>sandbox</code> and <code>staging-api</code>, identity hosts like <code>auth</code> and <code>sso</code>, and event hosts like <code>webhooks</code>. Whatever resolves becomes an amber row.</p>
+
+  <h3>3. Spec path probing</h3>
+  <p>Takes the apex plus the hosts that resolved, up to eight origins, and attempts a direct read of each well-known descriptor path on each one:</p>
+  <div class="tbl-scroll">
+  <table>
+    <tr><th>Path</th><th>What a hit tells you</th></tr>
+    <tr><td><code>/openapi.json</code>, <code>/openapi.yaml</code></td><td>Full OpenAPI 3 description of the API</td></tr>
+    <tr><td><code>/swagger.json</code>, <code>/swagger/v1/swagger.json</code></td><td>Swagger 2 description, often an older service</td></tr>
+    <tr><td><code>/v3/api-docs</code>, <code>/v2/api-docs</code>, <code>/api-docs</code></td><td>Springdoc or Springfox defaults, common in Java stacks</td></tr>
+    <tr><td><code>/.well-known/openapi.json</code></td><td>Spec published at the standard discovery location</td></tr>
+    <tr><td><code>/.well-known/openid-configuration</code></td><td>An OIDC provider, with its token and authorization endpoints</td></tr>
+    <tr><td><code>/.well-known/oauth-authorization-server</code></td><td>An OAuth 2 authorization server and its metadata</td></tr>
+    <tr><td><code>/.well-known/security.txt</code></td><td>A published contact route for reporting what you find</td></tr>
+    <tr><td><code>/graphql</code></td><td>A GraphQL endpoint, which is one URL hiding an entire schema</td></tr>
+  </table>
+  </div>
+  <p>Reads that succeed become green rows with the title, version and declared servers pulled out of the spec. Reads that fail become blue candidates, but only when the origin host actually resolved, so the list stays free of invented hostnames.</p>
+
+  <h2>Verifying the candidates</h2>
+  <p>Click <strong>Copy verification commands</strong> and paste into a terminal. Each line prints a status code and content type without downloading the body:</p>
+  <pre><span class="c"># Run these to confirm each candidate endpoint.</span>
+curl -s -o /dev/null -w '%{http_code} %{content_type}  https://api.example.com/openapi.json\n' \
+  'https://api.example.com/openapi.json'</pre>
+  <p>How to read what comes back:</p>
+  <div class="tbl-scroll">
+  <table>
+    <tr><th>Result</th><th>Read it as</th></tr>
+    <tr><td><code>200</code> with a JSON or YAML content type</td><td>A real published spec. Promote it to documented and open it.</td></tr>
+    <tr><td><code>200</code> with <code>text/html</code></td><td>A catch-all page or SPA shell, not a spec. Discard.</td></tr>
+    <tr><td><code>401</code> or <code>403</code></td><td>Something is there and it is protected. Interesting, and correctly configured.</td></tr>
+    <tr><td><code>404</code></td><td>Nothing at that path. Discard the candidate.</td></tr>
+    <tr><td><code>405</code></td><td>The path exists but rejects GET. Common for <code>/graphql</code>, which usually wants POST.</td></tr>
+    <tr><td><code>000</code> or a timeout</td><td>No listener, or the connection was dropped. Nothing to chase.</td></tr>
+  </table>
+  </div>
+  <p>The tool cannot do this step for you. That is not an oversight, it is the browser security model working as intended.</p>
+
+  <h2>The OWASP mapping</h2>
+  <p>Each finding carries a chip linking to the relevant category of the OWASP API Security Top 10 (2023), and the review panel underneath collects the categories your results actually touched. The mapping is deliberately simple:</p>
+  <ul>
+    <li>Identity hosts such as <code>auth</code>, <code>sso</code> and <code>oauth</code>, plus OIDC and OAuth metadata documents, map to <strong>API2 Broken Authentication</strong>.</li>
+    <li>GraphQL endpoints map to <strong>API4 Unrestricted Resource Consumption</strong>, because one URL can accept an arbitrarily expensive query.</li>
+    <li>Webhook, integration and partner hosts map to <strong>API7 Server Side Request Forgery</strong>, since those are the places an API fetches URLs you supply.</li>
+    <li>A readable spec maps to <strong>API3</strong> and <strong>API8</strong>, because the schema shows you exactly which properties are exposed and whether the deployment leaks more than it should.</li>
+    <li>Everything else maps to <strong>API9 Improper Inventory Management</strong>, which is the honest headline for the whole exercise. Discovery is an inventory problem first.</li>
+  </ul>
+  <div class="callout">
+    <p><b>Nothing here is a vulnerability finding.</b> A chip is a prompt to review, not proof of a flaw. The risks that actually cause breaches are authorization flaws: API1 Broken Object Level Authorization, API5 Broken Function Level Authorization and API6 Unrestricted Access to Sensitive Business Flows. All three are invisible to passive discovery, because seeing them requires sending authenticated requests and comparing what different users get back. No amount of external mapping substitutes for that.</p>
+  </div>
+
+  <h2>Limits worth knowing</h2>
+  <ul>
+    <li><strong>It is a wordlist, not enumeration.</strong> Hosts outside the roughly forty five names in the list are simply never tried. Real subdomain enumeration needs certificate transparency logs and passive DNS, which a browser cannot query freely.</li>
+    <li><strong>Cross-origin rules cap what it can read.</strong> Any host that does not opt into cross-origin reads stays unreadable, permanently, no matter how public its API is.</li>
+    <li><strong>Only A records.</strong> A host that exists solely as an AAAA or an unusual record type will be missed.</li>
+    <li><strong>It is a snapshot.</strong> DNS answers reflect the moment you ran it. Re-run and diff the JSON if you care about change over time.</li>
+    <li><strong>Directory coverage is uneven.</strong> APIs.guru is broad but not complete, so an absent entry means nothing.</li>
+    <li><strong>Nothing is proxied.</strong> Every request comes from your own browser and your own IP. There is no server behind this page collecting what you look up.</li>
+  </ul>
+
+  <h2>Exporting a run</h2>
+  <p><strong>Copy results as JSON</strong> gives you the whole run in a stable shape, suitable for saving alongside a report or diffing against a later scan:</p>
+  <pre>{
+  "domain": "example.com",
+  "documented": [ { "provider": "...", "title": "...", "spec": "..." } ],
+  "live": [ "api.example.com", "auth.example.com" ],
+  "candidate": [ "https://api.example.com/openapi.json" ],
+  "owaspReviewAreas": [ "API9", "API2" ]
+}</pre>
+
+  <h2>Troubleshooting</h2>
+  <h3>Everything came back empty</h3>
+  <p>Check the domain form first. It wants a registrable domain, so <code>example.com</code> rather than <code>docs.example.com</code>. If the domain is right, an empty result is a real result: plenty of organizations expose no API-style hostnames under common names.</p>
+
+  <h3>"Could not reach the public directory"</h3>
+  <p>The APIs.guru fetch failed, usually a network block or an extension interfering. The other two phases still run, you just lose the green directory rows.</p>
+
+  <h3>Nothing was directly readable</h3>
+  <p>Expected, and stated on the page when it happens. Most APIs correctly refuse cross-origin reads. Work the candidate list with the copied commands instead.</p>
+
+  <h3>A host resolves but nothing responds</h3>
+  <p>Common and benign. Wildcard DNS makes every name under a domain resolve, and plenty of names point at infrastructure that answers nothing on 443. Verification is what separates these from real endpoints.</p>
+
+  <div class="note-box">
+    <p><b>Scope note.</b> Resolving a hostname and requesting a published document is ordinary, unauthenticated traffic. Testing what you find is a different activity. Confirm you have authorization, or an in-scope bug bounty program, before you go past reading public documents.</p>
+  </div>
+
+  <footer>
+    API Surface Mapper runs entirely in your browser. Source on
+    <a href="https://github.com/tbgh011/API-surface-mapper" target="_blank" rel="noopener">GitHub</a>.
+    <a href="index.html">Back to the mapper</a>.
+  </footer>
+</div>
+</body>
+</html>

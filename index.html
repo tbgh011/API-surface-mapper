@@ -236,6 +236,10 @@
   }
   .owasp-chips a:hover{border-color:var(--danger)}
 
+  header p.subnav{margin:-14px 0 22px;font-size:12.5px}
+  header p.subnav a{color:var(--live);text-decoration:none;border-bottom:1px solid #4d3c18}
+  header p.subnav a:hover{border-bottom-color:var(--live)}
+
   footer{margin-top:46px;color:var(--text-faint);font-size:12px;max-width:70ch}
   footer a{color:var(--text-dim)}
 
@@ -251,6 +255,7 @@
   <header>
     <h1>API Surface Mapper</h1>
     <p class="lede">Enter a domain and this maps the public API surface a browser can reach: hostnames that resolve, endpoints listed in a public API directory, and spec files it can read directly. It runs entirely in your browser.</p>
+    <p class="subnav"><a href="quickstart-guide.html">Quickstart guide</a></p>
   </header>
 
   <div class="console">
@@ -292,7 +297,9 @@
 
   <footer>
     Evidence sources: DNS-over-HTTPS (Google, Cloudflare) for host resolution, the
-    <a href="https://apis.guru" target="_blank" rel="noopener">APIs.guru</a> open directory for documented specs, and direct fetches for readable spec files. For exhaustive discovery (full subdomain enumeration, authenticated crawling, response inspection) you need a server-side scanner. Ask and I will give you that version.
+    <a href="https://apis.guru" target="_blank" rel="noopener">APIs.guru</a> open directory for documented specs, and direct fetches for readable spec files. For exhaustive discovery (full subdomain enumeration, authenticated crawling, response inspection) you need a server-side scanner.
+    <br><br>
+    New here? Read the <a href="quickstart-guide.html">quickstart guide</a>.
   </footer>
 </div>
 

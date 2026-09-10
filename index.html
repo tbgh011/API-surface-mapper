@@ -1,5 +1,5 @@
 <!doctype html>
-<!Tony Bailey - API security project>
+<!-- Tony Bailey - API security project -->
 <html lang="en">
 <head>
 <meta charset="utf-8">
@@ -340,34 +340,38 @@
   ];
 
   // OWASP API Security Top 10 (2023). Canonical references.
-  const OWASP_BASE = "https://owasp.org/API-Security/editions/2023/en/";
+  // owasp.org retired the /API-Security/ docs subsite in its 2026 site redesign, so
+  // those URLs now 404. The canonical source of the 2023 edition text is the project
+  // repository, which renders the same content and is stable.
+  const OWASP_BASE = "https://github.com/OWASP/API-Security/blob/master/editions/2023/en/";
+  const OWASP_PROJECT = "https://owasp.org/projects/api-security-project";
   const OWASP = {
     API1:{ code:"API1:2023", title:"Broken Object Level Authorization",
-      url:OWASP_BASE+"0xa1-broken-object-level-authorization/" },
+      url:OWASP_BASE+"0xa1-broken-object-level-authorization.md" },
     API2:{ code:"API2:2023", title:"Broken Authentication",
-      url:OWASP_BASE+"0xa2-broken-authentication/",
+      url:OWASP_BASE+"0xa2-broken-authentication.md",
       check:"Auth-related hosts or discovery documents turned up. Review token issuance and validation, session and refresh handling, protection against credential stuffing and brute force, and whether auth endpoints leak whether an account exists." },
     API3:{ code:"API3:2023", title:"Broken Object Property Level Authorization",
-      url:OWASP_BASE+"0xa3-broken-object-property-level-authorization/",
+      url:OWASP_BASE+"0xa3-broken-object-property-level-authorization.md",
       check:"A machine-readable schema is public. Use it to look for properties returned that should be filtered by authorization (over-exposure) and writable properties that should be read-only (mass assignment)." },
     API4:{ code:"API4:2023", title:"Unrestricted Resource Consumption",
-      url:OWASP_BASE+"0xa4-unrestricted-resource-consumption/",
+      url:OWASP_BASE+"0xa4-unrestricted-resource-consumption.md",
       check:"A GraphQL or query-heavy endpoint is reachable. Confirm that query depth and complexity limits, pagination caps, rate limits, and payload size limits are enforced." },
     API5:{ code:"API5:2023", title:"Broken Function Level Authorization",
-      url:OWASP_BASE+"0xa5-broken-function-level-authorization/" },
+      url:OWASP_BASE+"0xa5-broken-function-level-authorization.md" },
     API6:{ code:"API6:2023", title:"Unrestricted Access to Sensitive Business Flows",
-      url:OWASP_BASE+"0xa6-unrestricted-access-to-sensitive-business-flows/" },
+      url:OWASP_BASE+"0xa6-unrestricted-access-to-sensitive-business-flows.md" },
     API7:{ code:"API7:2023", title:"Server Side Request Forgery",
-      url:OWASP_BASE+"0xa7-server-side-request-forgery/",
+      url:OWASP_BASE+"0xa7-server-side-request-forgery.md",
       check:"Webhook or integration endpoints are exposed. Anywhere the API fetches a user-supplied URL, validate and allowlist outbound destinations and block internal and cloud metadata addresses." },
     API8:{ code:"API8:2023", title:"Security Misconfiguration",
-      url:OWASP_BASE+"0xa8-security-misconfiguration/",
+      url:OWASP_BASE+"0xa8-security-misconfiguration.md",
       check:"A readable spec or config endpoint is exposed. Check that it does not reveal internal server URLs, debug or admin routes, or verbose errors, and review CORS, TLS, and security headers on these hosts." },
     API9:{ code:"API9:2023", title:"Improper Inventory Management",
-      url:OWASP_BASE+"0xa9-improper-inventory-management/",
+      url:OWASP_BASE+"0xa9-improper-inventory-management.md",
       check:"Discovery is fundamentally an inventory problem. Match every host and endpoint below against your official API catalog. Investigate anything unexpected: old versions living beside current ones, staging or sandbox hosts exposed to the internet, and forgotten services. Retire what should not be public." },
     API10:{ code:"API10:2023", title:"Unsafe Consumption of APIs",
-      url:OWASP_BASE+"0xaa-unsafe-consumption-of-apis/" }
+      url:OWASP_BASE+"0xaa-unsafe-consumption-of-apis.md" }
   };
   // Order the guidance cards are shown in.
   const GUIDANCE_ORDER = ["API9","API2","API8","API3","API4","API7"];
@@ -659,7 +663,7 @@
     let html =
       `<h2>Security review guidance</h2>` +
       `<p class="disc">Findings mapped to the areas of the ` +
-      `<a href="https://owasp.org/API-Security/" target="_blank" rel="noopener" style="color:var(--text-dim)">OWASP API Security Top 10 (2023)</a> ` +
+      `<a href="${OWASP_PROJECT}" target="_blank" rel="noopener" style="color:var(--text-dim)">OWASP API Security Top 10 (2023)</a> ` +
       `worth reviewing. This is a starting checklist derived from passive discovery, not a vulnerability assessment. A card here is a prompt to review, not proof of a flaw.</p>`;
 
     for (const id of GUIDANCE_ORDER){

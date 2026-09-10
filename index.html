@@ -205,6 +205,36 @@
   }
   .actions button:hover{border-color:var(--text-faint)}
 
+  /* OWASP review guidance */
+  .guidance{display:none;margin-top:36px}
+  .guidance.on{display:block}
+  .guidance > h2{font-size:15px;font-weight:640;margin:0 0 6px}
+  .guidance > .disc{font-size:12.5px;color:var(--text-dim);max-width:76ch;margin:0 0 16px}
+  .owasp-card{
+    background:var(--panel);border:1px solid var(--border-soft);
+    border-left:3px solid var(--danger);border-radius:9px;
+    padding:12px 14px;margin-bottom:8px;
+  }
+  .owasp-card h3{margin:0 0 5px;font-size:13px;font-weight:620;
+    display:flex;gap:9px;align-items:baseline;flex-wrap:wrap}
+  .owasp-card h3 .code{font-family:var(--mono);color:var(--danger);font-size:11.5px}
+  .owasp-card h3 a{color:var(--text);text-decoration:none}
+  .owasp-card h3 a:hover{text-decoration:underline}
+  .owasp-card p{margin:0;font-size:12.5px;color:var(--text-dim)}
+  .caveat{
+    background:#191426;border:1px solid #362a46;border-radius:9px;
+    padding:12px 14px;margin-top:14px;font-size:12.5px;color:var(--text-dim);
+  }
+  .caveat b{color:var(--text)}
+  .caveat a{color:var(--text-dim)}
+  .owasp-chips{margin-top:7px;display:flex;flex-wrap:wrap;gap:6px}
+  .owasp-chips a{
+    font-family:var(--mono);font-size:10px;font-weight:600;
+    color:var(--danger);text-decoration:none;
+    border:1px solid #4a2f38;background:#241419;border-radius:5px;padding:2px 6px;
+  }
+  .owasp-chips a:hover{border-color:var(--danger)}
+
   footer{margin-top:46px;color:var(--text-faint);font-size:12px;max-width:70ch}
   footer a{color:var(--text-dim)}
 
@@ -252,6 +282,8 @@
 
   <div id="results"></div>
 
+  <div class="guidance" id="guidance"></div>
+
   <div class="actions" id="actions">
     <button id="copyCurl">Copy verification commands</button>
     <button id="copyJson">Copy results as JSON</button>
@@ -270,7 +302,7 @@
   const $ = (id) => document.getElementById(id);
   const el = { domain:$("domain"), run:$("run"), status:$("status"), statusText:$("statusText"),
     bar:$("bar"), summary:$("summary"), results:$("results"), actions:$("actions"),
-    cDoc:$("cDoc"), cLive:$("cLive"), cCand:$("cCand") };
+    cDoc:$("cDoc"), cLive:$("cLive"), cCand:$("cCand"), guidance:$("guidance") };
 
   // ---- config -------------------------------------------------------------
 
@@ -305,6 +337,54 @@
     (name) => `https://dns.google/resolve?name=${encodeURIComponent(name)}&type=A`,
     (name) => `https://cloudflare-dns.com/dns-query?name=${encodeURIComponent(name)}&type=A`
   ];
+
+  // OWASP API Security Top 10 (2023). Canonical references.
+  const OWASP_BASE = "https://owasp.org/API-Security/editions/2023/en/";
+  const OWASP = {
+    API1:{ code:"API1:2023", title:"Broken Object Level Authorization",
+      url:OWASP_BASE+"0xa1-broken-object-level-authorization/" },
+    API2:{ code:"API2:2023", title:"Broken Authentication",
+      url:OWASP_BASE+"0xa2-broken-authentication/",
+      check:"Auth-related hosts or discovery documents turned up. Review token issuance and validation, session and refresh handling, protection against credential stuffing and brute force, and whether auth endpoints leak whether an account exists." },
+    API3:{ code:"API3:2023", title:"Broken Object Property Level Authorization",
+      url:OWASP_BASE+"0xa3-broken-object-property-level-authorization/",
+      check:"A machine-readable schema is public. Use it to look for properties returned that should be filtered by authorization (over-exposure) and writable properties that should be read-only (mass assignment)." },
+    API4:{ code:"API4:2023", title:"Unrestricted Resource Consumption",
+      url:OWASP_BASE+"0xa4-unrestricted-resource-consumption/",
+      check:"A GraphQL or query-heavy endpoint is reachable. Confirm that query depth and complexity limits, pagination caps, rate limits, and payload size limits are enforced." },
+    API5:{ code:"API5:2023", title:"Broken Function Level Authorization",
+      url:OWASP_BASE+"0xa5-broken-function-level-authorization/" },
+    API6:{ code:"API6:2023", title:"Unrestricted Access to Sensitive Business Flows",
+      url:OWASP_BASE+"0xa6-unrestricted-access-to-sensitive-business-flows/" },
+    API7:{ code:"API7:2023", title:"Server Side Request Forgery",
+      url:OWASP_BASE+"0xa7-server-side-request-forgery/",
+      check:"Webhook or integration endpoints are exposed. Anywhere the API fetches a user-supplied URL, validate and allowlist outbound destinations and block internal and cloud metadata addresses." },
+    API8:{ code:"API8:2023", title:"Security Misconfiguration",
+      url:OWASP_BASE+"0xa8-security-misconfiguration/",
+      check:"A readable spec or config endpoint is exposed. Check that it does not reveal internal server URLs, debug or admin routes, or verbose errors, and review CORS, TLS, and security headers on these hosts." },
+    API9:{ code:"API9:2023", title:"Improper Inventory Management",
+      url:OWASP_BASE+"0xa9-improper-inventory-management/",
+      check:"Discovery is fundamentally an inventory problem. Match every host and endpoint below against your official API catalog. Investigate anything unexpected: old versions living beside current ones, staging or sandbox hosts exposed to the internet, and forgotten services. Retire what should not be public." },
+    API10:{ code:"API10:2023", title:"Unsafe Consumption of APIs",
+      url:OWASP_BASE+"0xaa-unsafe-consumption-of-apis/" }
+  };
+  // Order the guidance cards are shown in.
+  const GUIDANCE_ORDER = ["API9","API2","API8","API3","API4","API7"];
+
+  // Most relevant category for a resolved hostname, by its leftmost label.
+  function owaspForHost(host){
+    const l = host.split(".")[0];
+    if (/^(auth|oauth|sso|id|identity|login|token|account|accounts)$/.test(l)) return ["API2"];
+    if (/^(graphql|gql)$/.test(l)) return ["API4"];
+    if (/^(webhook|webhooks|integrations|connect|partner|partners)$/.test(l)) return ["API7"];
+    return ["API9"];
+  }
+  // Most relevant category for a candidate descriptor URL, by its path.
+  function owaspForCandidate(url){
+    if (url.includes("openid-configuration") || url.includes("oauth-authorization-server")) return ["API2"];
+    if (/\/graphql$/.test(url)) return ["API4"];
+    return ["API9"];
+  }
 
   let apisGuruCache = null;
   let lastResults = null;
@@ -353,7 +433,7 @@
 
   // ---- rendering ----------------------------------------------------------
 
-  const state = { documented:[], live:[], candidate:[] };
+  const state = { documented:[], live:[], candidate:[], triggered:new Set() };
 
   function group(id, title, blurb){
     let g = document.getElementById("g-" + id);
@@ -368,16 +448,25 @@
     return g;
   }
 
-  function addRow(groupId, tier, { url, label, meta }){
+  function addRow(groupId, tier, { url, label, meta, owasp }){
     const body = document.querySelector("#gb-" + groupId);
     if (!body) return;
     const row = document.createElement("div");
     row.className = "row " + tier;
     const safeUrl = url.replace(/"/g, "&quot;");
+    let chips = "";
+    if (owasp && owasp.length){
+      chips = `<div class="owasp-chips">` + owasp.map(id => {
+        const o = OWASP[id];
+        state.triggered.add(id);
+        return `<a href="${o.url}" target="_blank" rel="noopener" title="${o.title}">${o.code}</a>`;
+      }).join("") + `</div>`;
+    }
     row.innerHTML =
       `<div class="main">` +
         `<a class="url" href="${safeUrl}" target="_blank" rel="noopener">${label || url}</a>` +
         (meta ? `<div class="meta">${meta}</div>` : "") +
+        chips +
       `</div>` +
       `<span class="tag ${tier}">${tier === "documented" ? "documented" : tier === "live" ? "live host" : "verify"}</span>`;
     body.appendChild(row);
@@ -458,7 +547,8 @@
         addRow("hosts", "live", {
           url: "https://" + host,
           label: host,
-          meta: res.via ? `<span class="k">cname</span> ${res.via}` : `<span class="k">resolves</span> A record`
+          meta: res.via ? `<span class="k">cname</span> ${res.via}` : `<span class="k">resolves</span> A record`,
+          owasp: owaspForHost(host)
         });
         bumpCounts();
       }
@@ -497,7 +587,7 @@
         }
         anyReadable = true;
         state.documented.push({ readable: url });
-        addRow("specs", "documented", { url, label: url, meta });
+        addRow("specs", "documented", { url, label: url, meta, owasp: ["API3","API8"] });
         bumpCounts();
       } catch (_) {
         // CORS block or no host: a candidate, only if its origin host actually resolved
@@ -507,7 +597,8 @@
           state.candidate.push(url);
           addRow("specs", "candidate", {
             url, label: url,
-            meta: `<span class="k">blocked by CORS or not served</span> verify with the commands below`
+            meta: `<span class="k">blocked by CORS or not served</span> verify with the commands below`,
+            owasp: owaspForCandidate(url)
           });
           bumpCounts();
         }
@@ -553,6 +644,51 @@
     setTimeout(() => btn.textContent = old, 1400);
   }
 
+  // ---- OWASP review guidance ---------------------------------------------
+
+  function renderGuidance(){
+    const g = el.guidance;
+    g.innerHTML = "";
+    const surface = state.live.length + state.candidate.length + state.documented.length;
+    if (!surface){ g.classList.remove("on"); return; }
+
+    // Any reachable API surface is, at minimum, an inventory concern.
+    if (state.live.length || state.candidate.length) state.triggered.add("API9");
+
+    let html =
+      `<h2>Security review guidance</h2>` +
+      `<p class="disc">Findings mapped to the areas of the ` +
+      `<a href="https://owasp.org/API-Security/" target="_blank" rel="noopener" style="color:var(--text-dim)">OWASP API Security Top 10 (2023)</a> ` +
+      `worth reviewing. This is a starting checklist derived from passive discovery, not a vulnerability assessment. A card here is a prompt to review, not proof of a flaw.</p>`;
+
+    for (const id of GUIDANCE_ORDER){
+      if (!state.triggered.has(id)) continue;
+      const o = OWASP[id];
+      html +=
+        `<div class="owasp-card">` +
+          `<h3><span class="code">${o.code}</span> ` +
+          `<a href="${o.url}" target="_blank" rel="noopener">${o.title}</a></h3>` +
+          `<p>${o.check}</p>` +
+        `</div>`;
+    }
+
+    // The highest-impact risks cannot be seen without authenticated testing.
+    const blind = ["API1","API5","API6","API10"].map(id => {
+      const o = OWASP[id];
+      return `<a href="${o.url}" target="_blank" rel="noopener">${o.code} ${o.title}</a>`;
+    });
+    html +=
+      `<div class="caveat"><b>What passive discovery cannot see.</b> The most damaging API ` +
+      `risks are authorization flaws that only surface once you send authenticated requests, so ` +
+      `nothing above can detect them. Test these by hand: ${blind[0]} (reading or changing other ` +
+      `users' objects by altering an ID), ${blind[1]} (reaching admin or privileged functions), ` +
+      `and ${blind[2]}. Also review ${blind[3]}, which concerns how these APIs trust their own ` +
+      `upstream integrations.</div>`;
+
+    g.innerHTML = html;
+    g.classList.add("on");
+  }
+
   // ---- orchestration ------------------------------------------------------
 
   async function run(){
@@ -565,8 +701,10 @@
     el.domain.value = domain;
     el.run.disabled = true;
     el.results.innerHTML = "";
+    el.guidance.innerHTML = "";
+    el.guidance.classList.remove("on");
     el.actions.classList.remove("on");
-    state.documented = []; state.live = []; state.candidate = [];
+    state.documented = []; state.live = []; state.candidate = []; state.triggered = new Set();
     bumpCounts();
     el.summary.classList.add("on");
     setStatus("Checking the public API directory...", 8);
@@ -577,6 +715,7 @@
       await directoryLookup(domain, sld);
       const liveHosts = await subdomainProbe(domain);
       await descriptorProbe(domain, liveHosts);
+      renderGuidance();
       setStatus(
         `Done. ${state.documented.length} documented, ${state.live.length} live hosts, ${state.candidate.length} to verify.`,
         100
@@ -585,7 +724,8 @@
       setStatus("Something went wrong during the scan: " + (e && e.message ? e.message : e));
     } finally {
       el.run.disabled = false;
-      lastResults = { domain, ...state };
+      lastResults = { domain, documented:state.documented, live:state.live,
+        candidate:state.candidate, owaspReviewAreas:[...state.triggered] };
       el.actions.classList.add("on");
     }
   }

@@ -257,7 +257,7 @@ curl -s -o /dev/null -w '%{http_code} %{content_type}  https://api.example.com/o
     <li><strong>Only A records.</strong> A host that exists solely as an AAAA or an unusual record type will be missed.</li>
     <li><strong>It is a snapshot.</strong> DNS answers reflect the moment you ran it. Re-run and diff the JSON if you care about change over time.</li>
     <li><strong>Directory coverage is uneven.</strong> APIs.guru is broad but not complete, so an absent entry means nothing.</li>
-    <li><strong>Nothing is proxied.</strong> Every request comes from your own browser and your own IP. There is no server behind this page collecting what you look up.</li>
+    <li><strong>Nothing is proxied, but the lookups are not invisible.</strong> There is no backend, so every request runs from your browser and your own IP and nothing you search is logged by this page. The DNS resolvers and the public directory it queries do see the domain, and the target host sees the spec path requests. If a lookup needs to be unattributable to you, this is the wrong tool.</li>
   </ul>
 
   <h2>Exporting a run</h2>

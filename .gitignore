@@ -15,3 +15,9 @@ node_modules/
 
 # Logs and temp
 *.log
+
+# Python
+__pycache__/
+*.pyc
+.venv/
+venv/

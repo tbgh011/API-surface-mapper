@@ -12,7 +12,8 @@ COPY server/requirements.txt ./requirements.txt
 RUN pip install --no-cache-dir -r requirements.txt
 
 COPY server/app ./app
-COPY index.html quickstart-guide.html ./static/
+# Every page at the repo root, so adding a guide needs no Dockerfile change.
+COPY *.html ./static/
 
 # Run unprivileged. The scanner only makes outbound requests; it needs no write
 # access to its own code.

@@ -265,7 +265,7 @@
   <header>
     <h1>API Surface Mapper</h1>
     <p class="lede">Enter a domain and this maps the public API surface a browser can reach: hostnames that resolve, endpoints listed in a public API directory, and spec files it can read directly. It runs entirely in your browser.</p>
-    <p class="subnav"><a href="quickstart-guide.html">Quickstart guide</a></p>
+    <p class="subnav"><a href="quickstart-guide.html">Quickstart guide</a> &nbsp;&middot;&nbsp; <a href="setup-guide.html">Set up the server engine</a></p>
   </header>
 
   <div class="console">
@@ -278,7 +278,7 @@
   <p class="engine" id="engine"></p>
 
   <p class="note">
-    A browser cannot crawl a domain the way a server can. Cross-origin rules (CORS) stop it from reading responses off hosts you do not control, so anything unreadable is reported as a candidate to check yourself, not a confirmed API. The hosted version has no backend: every lookup runs from your browser and your own IP, so nothing you search is logged by this page. The DNS resolvers and the public directory it queries do see the domain. Run the optional <a href="https://github.com/tbgh011/API-surface-mapper/tree/main/server">server engine</a> in Docker and those limits lift: it enumerates certificate transparency logs, reads responses directly, and parses the specs it finds.
+    A browser cannot crawl a domain the way a server can. Cross-origin rules (CORS) stop it from reading responses off hosts you do not control, so anything unreadable is reported as a candidate to check yourself, not a confirmed API. The hosted version has no backend: every lookup runs from your browser and your own IP, so nothing you search is logged by this page. The DNS resolvers and the public directory it queries do see the domain. Run the optional <a href="setup-guide.html">server engine</a> in Docker and those limits lift: it enumerates certificate transparency logs, reads responses directly, and parses the specs it finds. The setup guide walks through it from scratch.
   </p>
 
   <div class="legend" aria-hidden="true">
@@ -311,7 +311,7 @@
     Evidence sources: DNS-over-HTTPS (Google, Cloudflare) for host resolution, the
     <a href="https://apis.guru" target="_blank" rel="noopener">APIs.guru</a> open directory for documented specs, and direct fetches for readable spec files. With the server engine running it adds certificate transparency logs (crt.sh, Cert Spotter), full DNS including CNAME chains and wildcard detection, unrestricted response reads, OpenAPI and OpenID Connect parsing, GraphQL introspection, and CORS policy inspection. Authenticated crawling is out of scope for both.
     <br><br>
-    New here? Read the <a href="quickstart-guide.html">quickstart guide</a>.
+    New here? Read the <a href="quickstart-guide.html">quickstart guide</a>. To run the server engine yourself, follow the <a href="setup-guide.html">setup guide</a>.
   </footer>
 </div>
 

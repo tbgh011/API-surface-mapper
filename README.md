@@ -12,6 +12,11 @@ wordlist, direct reads instead of CORS-blocked candidates, and parsed specs
 instead of links to them. The page detects it automatically and falls back to the
 browser engine when it is not there.
 
+**New to this?** [`SETUP.md`](SETUP.md) walks through the server engine from
+nothing installed to your first scan, assuming no experience with Docker, Python
+or the command line. The same guide is published as a page at
+[`/setup-guide.html`](https://tbgh011.github.io/API-surface-mapper/setup-guide.html).
+
 ## Live site
 
 Hosted on GitHub Pages: https://tbgh011.github.io/API-surface-mapper/
@@ -72,6 +77,10 @@ docker compose up --build
 Then open <http://localhost:8000>. A **Server engine** badge appears under the
 input; the link beside it switches back to the browser engine at any time. The
 GitHub Pages deployment is untouched and keeps working exactly as before.
+
+If that one line assumes more than you want it to, [`SETUP.md`](SETUP.md) covers
+installing Docker, getting the code, opening a terminal in the right folder, and
+what to do when something goes wrong.
 
 ### What it adds
 
@@ -162,8 +171,12 @@ URL is what actually runs it.
 
 - `index.html` - the tool. Single file, vanilla JS, no build step. Runs standalone
   and uses the server engine automatically when one is answering on its origin.
-- `quickstart-guide.html` - the usage guide, linked from the tool's header and
-  footer.
+- `quickstart-guide.html` - the usage guide: how to read the results, what each
+  tier means, and what the tool does not claim.
+- `setup-guide.html` - the beginner setup guide as a styled page, linked from the
+  tool's header and footer. Same content as `SETUP.md`; keep the two in step.
+- `SETUP.md` - the same guide in Markdown, for people who arrive at the repository
+  rather than the hosted page.
 - `docker-compose.yml` - brings up the optional server engine on `localhost:8000`.
 - `server/` - the Python service. `app/main.py` is the FastAPI app (static UI plus
   a Server-Sent Events scan stream), `app/safety.py` holds the SSRF and scope

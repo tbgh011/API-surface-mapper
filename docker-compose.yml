@@ -25,5 +25,6 @@ services:
       # Live-edit the UI and engine without rebuilding.
       - ./index.html:/srv/static/index.html:ro
       - ./quickstart-guide.html:/srv/static/quickstart-guide.html:ro
+      - ./setup-guide.html:/srv/static/setup-guide.html:ro
       - ./server/app:/srv/app:ro
     restart: unless-stopped

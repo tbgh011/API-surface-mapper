@@ -1,0 +1,275 @@
+<!doctype html>
+<!-- Tony Bailey - API security project -->
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Setup guide - API Surface Mapper</title>
+<style>
+  :root{
+    --bg:#0d1220;
+    --panel:#161d2e;
+    --panel-2:#1b2439;
+    --border:#26304a;
+    --border-soft:#1f2840;
+    --text:#c9d3e8;
+    --text-dim:#8291b0;
+    --text-faint:#5f6d8c;
+    --documented:#6fcf97;
+    --live:#ffb454;
+    --candidate:#5aa9e6;
+    --danger:#e06c6c;
+    --sans: ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+    --mono: ui-monospace, "SF Mono", "JetBrains Mono", Menlo, Consolas, monospace;
+  }
+  *{box-sizing:border-box}
+  html,body{margin:0}
+  body{
+    background:
+      radial-gradient(1200px 600px at 15% -10%, #17203a 0%, transparent 55%),
+      var(--bg);
+    color:var(--text);
+    font-family:var(--sans);
+    line-height:1.6;
+    -webkit-font-smoothing:antialiased;
+    min-height:100vh;
+  }
+  .wrap{max-width:860px;margin:0 auto;padding:36px 20px 80px}
+
+  header h1{font-size:26px;font-weight:640;letter-spacing:-0.02em;margin:0 0 6px}
+  header p.lede{margin:0 0 10px;color:var(--text-dim);max-width:66ch;font-size:15px}
+  p.subnav{margin:0 0 30px;font-size:12.5px}
+  p.subnav a{color:var(--live);text-decoration:none;border-bottom:1px solid #4d3c18}
+  p.subnav a:hover{border-bottom-color:var(--live)}
+
+  h2{
+    font-size:15px;font-weight:640;margin:38px 0 8px;
+    padding-top:22px;border-top:1px solid var(--border-soft);
+  }
+  h2:first-of-type{border-top:0;padding-top:0;margin-top:30px}
+  h3{font-size:13.5px;font-weight:620;margin:20px 0 6px;color:var(--text)}
+  p{margin:0 0 12px;font-size:13.5px;color:var(--text-dim);max-width:76ch}
+  p strong, li strong{color:var(--text);font-weight:620}
+  a{color:var(--text-dim)}
+  code{
+    font-family:var(--mono);font-size:12.5px;color:var(--text);
+    background:var(--panel-2);border:1px solid var(--border-soft);
+    border-radius:4px;padding:1px 5px;
+  }
+  ul,ol{margin:0 0 12px;padding-left:20px;max-width:76ch}
+  li{font-size:13.5px;color:var(--text-dim);margin-bottom:6px}
+
+  /* numbered quickstart steps */
+  .steps{counter-reset:step;list-style:none;padding:0;margin:0 0 8px}
+  .steps > li{
+    counter-increment:step;
+    position:relative;
+    background:var(--panel);
+    border:1px solid var(--border-soft);
+    border-radius:9px;
+    padding:13px 15px 13px 50px;
+    margin-bottom:8px;
+    color:var(--text-dim);
+  }
+  .steps > li::before{
+    content:counter(step);
+    position:absolute;left:15px;top:12px;
+    width:22px;height:22px;border-radius:50%;
+    background:var(--panel-2);border:1px solid var(--border);
+    color:var(--live);font-family:var(--mono);font-size:11px;font-weight:660;
+    display:flex;align-items:center;justify-content:center;
+  }
+  .steps > li b{color:var(--text);font-weight:620}
+
+  /* evidence tier cards */
+  .tier{
+    background:var(--panel);
+    border:1px solid var(--border-soft);
+    border-left-width:3px;
+    border-radius:9px;
+    padding:13px 15px;
+    margin-bottom:8px;
+  }
+  .tier.documented{border-left-color:var(--documented)}
+  .tier.live{border-left-color:var(--live)}
+  .tier.candidate{border-left-color:var(--candidate)}
+  .tier h3{margin:0 0 5px;display:flex;align-items:center;gap:9px;flex-wrap:wrap}
+  .tier .tag{
+    font-family:var(--mono);font-size:10.5px;font-weight:600;
+    padding:3px 7px;border-radius:5px;white-space:nowrap;border:1px solid transparent;
+  }
+  .tag.documented{color:var(--documented);border-color:#2c4c3c;background:#12241b}
+  .tag.live{color:var(--live);border-color:#4d3c18;background:#241b0d}
+  .tag.candidate{color:var(--candidate);border-color:#243f57;background:#0f1e2b}
+  .tier p{margin:0 0 8px;font-size:12.5px}
+  .tier p:last-child{margin-bottom:0}
+  .tier .means{
+    font-size:12px;color:var(--text-faint);
+    border-top:1px solid var(--border-soft);padding-top:8px;margin-top:9px;
+  }
+  .tier .means b{color:var(--text-dim)}
+
+  pre{
+    background:#0e1526;border:1px solid var(--border-soft);border-radius:9px;
+    padding:13px 15px;overflow-x:auto;margin:0 0 14px;
+    font-family:var(--mono);font-size:12px;line-height:1.65;color:var(--text-dim);
+  }
+  pre .c{color:var(--text-faint)}
+
+  table{
+    width:100%;border-collapse:collapse;margin:0 0 14px;
+    font-size:12.5px;
+  }
+  th,td{
+    text-align:left;padding:9px 12px;
+    border-bottom:1px solid var(--border-soft);vertical-align:top;
+  }
+  th{color:var(--text);font-weight:620;font-size:12px}
+  td{color:var(--text-dim)}
+  td code{white-space:nowrap}
+  .tbl-scroll{overflow-x:auto}
+
+  .callout{
+    background:var(--panel);border:1px solid var(--border-soft);
+    border-left:3px solid var(--danger);border-radius:9px;
+    padding:13px 15px;margin:0 0 14px;
+  }
+  .callout p{margin:0;font-size:12.5px}
+  .callout b{color:var(--text)}
+
+  .note-box{
+    background:#191426;border:1px solid #362a46;border-radius:9px;
+    padding:13px 15px;margin:0 0 14px;
+  }
+  .note-box p{margin:0;font-size:12.5px}
+  .note-box b{color:var(--text)}
+
+  footer{margin-top:50px;padding-top:20px;border-top:1px solid var(--border-soft);
+    color:var(--text-faint);font-size:12px;max-width:70ch}
+  footer a{color:var(--text-dim)}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <h1>Setup guide</h1>
+    <p class="lede">How to run the server engine on your own machine, from nothing installed to your first scan. No prior experience with Docker, Python or the command line assumed.</p>
+    <p class="subnav"><a href="index.html">&#8592; Back to the mapper</a> &nbsp;&middot;&nbsp; <a href="quickstart-guide.html">Quickstart guide</a></p>
+  </header>
+
+  <h2>You may not need this</h2>
+  <p>The tool you just came from works with no setup at all. Everything on it runs in your browser. Follow this guide only if you want the fuller results the <strong>server engine</strong> produces: certificate transparency enumeration instead of a wordlist, responses read directly instead of blocked by CORS, and specification files parsed rather than just linked.</p>
+  <p>On <code>stripe.com</code>, the difference looks like this:</p>
+  <div class="tbl-scroll">
+  <table>
+    <tr><th>Engine</th><th>Documented</th><th>Live hosts</th><th>To verify</th></tr>
+    <tr><td>Browser (the hosted page)</td><td>1</td><td>7</td><td>84</td></tr>
+    <tr><td>Server engine (this guide)</td><td>2</td><td><strong>28</strong></td><td><strong>0</strong></td></tr>
+  </table>
+  </div>
+  <p>Budget about fifteen minutes, most of it waiting for Docker to install. You need a computer you can install software on, a few gigabytes of free disk space (Docker Desktop itself is most of that; the engine image is about 250&nbsp;MB), and an internet connection. You do not need to know Python. You will type four commands in total, and this page gives you all four.</p>
+
+  <h2>Step 1: Install Docker Desktop</h2>
+  <p>Docker is what runs the server engine. It packages everything the engine needs so you do not have to install Python or any libraries yourself.</p>
+  <p>Download it from <a href="https://www.docker.com/products/docker-desktop/" target="_blank" rel="noopener">docker.com</a> and run the installer, accepting the defaults. On Windows it may ask to install or update WSL and to restart your computer; let it.</p>
+  <div class="callout">
+    <p><b>Then start Docker Desktop and leave it running.</b> This is the step people miss. Installing Docker is not enough, it has to be running. You will know it is ready when the whale icon appears in your system tray or menu bar and stops animating. The first startup can take a minute or two.</p>
+  </div>
+
+  <h2>Step 2: Get the code</h2>
+  <p>Go to the <a href="https://github.com/tbgh011/API-surface-mapper" target="_blank" rel="noopener">repository on GitHub</a>. Click the green <strong>Code</strong> button, then <strong>Download ZIP</strong>. Save it somewhere you will find again, such as your Desktop, and unzip it. You will get a folder named <code>API-surface-mapper-main</code>.</p>
+  <p>If you already use Git, this does the same thing:</p>
+  <pre>git clone https://github.com/tbgh011/API-surface-mapper.git</pre>
+  <p>Either way, remember where that folder is. You need it in the next step.</p>
+
+  <h2>Step 3: Open a terminal in that folder</h2>
+  <p>The terminal has to be pointed at the folder you just unzipped. Opening one anywhere else and typing the command will not work, and this is the single most common thing that goes wrong.</p>
+  <ul>
+    <li><strong>Windows 11:</strong> open the folder, right-click any empty space inside it, choose <strong>Open in Terminal</strong>.</li>
+    <li><strong>Windows 10:</strong> open the folder, hold <strong>Shift</strong>, right-click empty space, choose <strong>Open PowerShell window here</strong>.</li>
+    <li><strong>macOS:</strong> open Terminal, type <code>cd</code> followed by a space, then drag the folder from Finder into the Terminal window and press Enter. That fills in the path for you.</li>
+    <li><strong>Linux:</strong> most file managers offer a right-click <strong>Open in Terminal</strong>. Otherwise <code>cd</code> to the folder.</li>
+  </ul>
+  <p>To check you are in the right place, type <code>ls</code> on macOS or Linux, or <code>dir</code> on Windows, and press Enter. You should see <code>index.html</code>, <code>docker-compose.yml</code> and a <code>server</code> folder. If you do not, you are in the wrong folder.</p>
+
+  <h2>Step 4: Start the server engine</h2>
+  <p>Type this and press Enter:</p>
+  <pre>docker compose up --build</pre>
+  <p><strong>The first run takes one to three minutes</strong> and prints a lot of text. It is downloading a Python image and installing the engine's libraries. That happens once; later runs take seconds.</p>
+  <p>You will know it worked when the text stops scrolling and the last lines look like this:</p>
+  <pre>api-surface-mapper  | INFO:     serving the UI from /srv/static
+api-surface-mapper  | INFO:     Started server process [1]
+api-surface-mapper  | INFO:     Application startup complete.
+api-surface-mapper  | INFO:     Uvicorn running on http://0.0.0.0:8000 <span class="c">(Press CTRL+C to quit)</span></pre>
+  <div class="callout">
+    <p><b>Leave this window open.</b> Closing it stops the server. It will keep printing a line for every request, which is normal and is how you can watch a scan work.</p>
+  </div>
+
+  <h2>Step 5: Open the tool</h2>
+  <p>In your browser, go to <code>http://localhost:8000</code></p>
+  <p>Use exactly that address. Do not open <code>index.html</code> by double-clicking it, and do not use the GitHub Pages address, because neither of those will find the engine.</p>
+  <p>You should see the familiar page with one addition under the domain box: a green <strong>SERVER ENGINE</strong> badge. That badge is your confirmation that everything is connected. If it is missing, see troubleshooting below.</p>
+
+  <h2>Step 6: Run your first scan</h2>
+  <p>Type a domain you own or are authorised to test, and press <strong>Map surface</strong>. A scan takes roughly twenty to sixty seconds depending on the size of the domain. The status strip tells you which phase is running: the public directory, then certificate transparency, then DNS resolution, then the spec probes, then response headers.</p>
+  <p>What to notice compared to the hosted page:</p>
+  <ul>
+    <li>Many more live hosts, because certificate transparency lists names that actually exist rather than names someone guessed</li>
+    <li>The blue <strong>to verify</strong> count near zero, because the server reads the responses your browser could not</li>
+    <li>Green rows carrying real detail: path and operation counts, declared auth schemes, and any operations that declare no authentication</li>
+  </ul>
+  <p>The <a href="quickstart-guide.html">quickstart guide</a> explains how to read the results and what each colour means.</p>
+
+  <h2>Stopping and starting again</h2>
+  <p>To stop it, click the terminal window and press <strong>Ctrl</strong>+<strong>C</strong>. Or, from that folder:</p>
+  <pre>docker compose down</pre>
+  <p>To start it again another day, open a terminal in the folder as in Step 3 and run the command below. There is no <code>--build</code> this time, so it starts in seconds:</p>
+  <pre>docker compose up</pre>
+  <p>To update to a newer version later, download the repository again or run <code>git pull</code>, then run <code>docker compose up --build</code> once to rebuild.</p>
+
+  <h2>Troubleshooting</h2>
+  <div class="tbl-scroll">
+  <table>
+    <tr><th>What you see</th><th>What it means</th><th>What to do</th></tr>
+    <tr><td><code>docker: command not found</code></td><td>Docker is not installed, or the terminal was open before you installed it</td><td>Complete Step 1, then close and reopen the terminal</td></tr>
+    <tr><td><code>Cannot connect to the Docker daemon</code></td><td>Docker Desktop is installed but not running</td><td>Start Docker Desktop, wait for the whale icon to settle, try again</td></tr>
+    <tr><td>Docker Desktop shows <em>"An unexpected error occurred"</em> naming a <code>.sock</code> file that <em>"cannot be accessed by the system"</em></td><td>Orphaned socket files from a previous crash, which Docker can neither delete nor reuse</td><td>See "Docker Desktop will not start" below</td></tr>
+    <tr><td><code>port is already allocated</code></td><td>Something else is using port 8000</td><td>See "Port 8000 is taken" below</td></tr>
+    <tr><td><code>no configuration file provided</code></td><td>The terminal is not in the project folder</td><td>Redo Step 3, and check with <code>ls</code> or <code>dir</code></td></tr>
+    <tr><td>The page loads but no <strong>SERVER ENGINE</strong> badge</td><td>The browser is not talking to the engine</td><td>Confirm the address is exactly <code>http://localhost:8000</code>, and that the Step 4 terminal is still running</td></tr>
+    <tr><td>The build seems frozen with no output</td><td>It is downloading, not stuck</td><td>Give it three minutes before worrying</td></tr>
+    <tr><td><em>"Certificate transparency logs were unreachable"</em></td><td>The public CT service is down or rate limiting you</td><td>Nothing to fix. The scan falls back to the built-in wordlist and still works</td></tr>
+    <tr><td>A scan on a large domain takes a long time</td><td>It is resolving hundreds of hostnames</td><td>Lower <code>MAX_HOSTS</code> in <code>docker-compose.yml</code>, for example to <code>100</code></td></tr>
+  </table>
+  </div>
+
+  <h3>Docker Desktop will not start</h3>
+  <p>If Docker Desktop crashes on startup complaining that a <code>.sock</code> file cannot be accessed, it is holding orphaned socket files that Windows will not let it delete. Restarting usually does not help, because each failed start creates more of them. The fix is to move the folders aside so Docker recreates them cleanly. Quit Docker Desktop, then in PowerShell:</p>
+  <pre>Get-Process -Name "Docker Desktop","com.docker.backend" -ErrorAction SilentlyContinue | Stop-Process -Force
+$stamp = Get-Date -Format yyyyMMdd-HHmmss
+Rename-Item "$env:LOCALAPPDATA\Docker\run" "run.stale-$stamp" -ErrorAction SilentlyContinue
+Rename-Item "$env:LOCALAPPDATA\docker-secrets-engine" "docker-secrets-engine.stale-$stamp" -ErrorAction SilentlyContinue</pre>
+  <p>Start Docker Desktop again. You may need to repeat this once, because a crash partway through startup can orphan a second set of files. The renamed <code>*.stale-*</code> folders are inert and can be deleted after your next reboot.</p>
+
+  <h3>Port 8000 is taken</h3>
+  <p>Open <code>docker-compose.yml</code> in any text editor and find this line:</p>
+  <pre>      - "127.0.0.1:8000:8000"</pre>
+  <p>Change the <strong>first</strong> number only, for example to <code>8001</code>:</p>
+  <pre>      - "127.0.0.1:8001:8000"</pre>
+  <p>Save, run <code>docker compose up</code> again, and use <code>http://localhost:8001</code>.</p>
+
+  <h2>A note on what you scan</h2>
+  <p>Resolving a hostname and requesting a published document is ordinary, unauthenticated traffic, and that is all this does. It reads what is public and sends one GraphQL introspection query. It does not log in, guess passwords, or attempt any exploit.</p>
+  <p>That said, it makes those requests from your own machine and your own IP address, and considerably more of them than the browser version does.</p>
+  <div class="note-box">
+    <p><b>Scope note.</b> Confirm you own the domain, or that it falls inside a bug bounty program or an authorised engagement, before you scan it. If you run this somewhere other people can reach, set <code>SCOPE_ALLOWLIST</code> in <code>docker-compose.yml</code> so the instance refuses anything outside the domains you are cleared for.</p>
+  </div>
+
+  <footer>
+    API Surface Mapper. The hosted page runs entirely in your browser; the server engine runs only where you install it. Source on
+    <a href="https://github.com/tbgh011/API-surface-mapper" target="_blank" rel="noopener">GitHub</a>.
+    <a href="index.html">Back to the mapper</a>.
+  </footer>
+</div>
+</body>
+</html>

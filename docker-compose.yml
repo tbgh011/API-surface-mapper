@@ -1,0 +1,29 @@
+services:
+  mapper:
+    build:
+      context: .
+      dockerfile: server/Dockerfile
+    image: api-surface-mapper:local
+    container_name: api-surface-mapper
+    ports:
+      # Bound to loopback on purpose: this is a local tool, not a public service.
+      - "127.0.0.1:8000:8000"
+    environment:
+      # Comma-separated domain suffixes this instance is allowed to scan.
+      # Empty means no restriction, which is fine for a loopback-only instance.
+      SCOPE_ALLOWLIST: ""
+      # Requests per minute per client IP.
+      RATE_LIMIT_PER_MIN: "12"
+      # Extra browser origins allowed to call the API. Empty means same-origin
+      # only, which is what you want unless you are driving it from a page
+      # hosted elsewhere.
+      ALLOWED_ORIGINS: ""
+      MAX_HOSTS: "400"
+      HTTP_CONCURRENCY: "24"
+      DNS_CONCURRENCY: "32"
+    volumes:
+      # Live-edit the UI and engine without rebuilding.
+      - ./index.html:/srv/static/index.html:ro
+      - ./quickstart-guide.html:/srv/static/quickstart-guide.html:ro
+      - ./server/app:/srv/app:ro
+    restart: unless-stopped

@@ -259,11 +259,41 @@ curl -s -o /dev/null -w '%{http_code} %{content_type}  https://api.example.com/o
     <li><strong>Directory coverage is uneven.</strong> APIs.guru is broad but not complete, so an absent entry means nothing.</li>
     <li><strong>Nothing is proxied, but the lookups are not invisible.</strong> There is no backend, so every request runs from your browser and your own IP and nothing you search is logged by this page. The DNS resolvers and the public directory it queries do see the domain, and the target host sees the spec path requests. If a lookup needs to be unattributable to you, this is the wrong tool.</li>
   </ul>
+  <div class="callout">
+    <p><b>The first three are browser limits, not tool limits.</b> The optional server engine below lifts all three. The last three apply to both engines.</p>
+  </div>
+
+  <h2>The server engine</h2>
+  <p>A browser is a poor scanner: it cannot query certificate transparency logs, cannot read a response from a host that does not opt in, and cannot see a single response header. A small Python service removes all three restrictions. It ships in this repository under <code>server/</code>, and it serves this guide and the tool itself, so there is nothing to configure:</p>
+  <pre>docker compose up --build</pre>
+  <p>Open <code>http://localhost:8000</code> and a <strong>Server engine</strong> badge appears under the domain input. The link beside it switches back to the browser engine whenever you want to compare the two. If the container is not running, the page behaves exactly as it always has.</p>
+
+  <div class="tbl-scroll">
+  <table>
+    <tr><th>Step</th><th>Browser engine</th><th>Server engine</th></tr>
+    <tr><td>Hostnames</td><td>A fixed list of about fifty guesses</td><td>Every name issued a certificate, from crt.sh or Cert Spotter, merged with the guess list and ranked so confirmed names probe first</td></tr>
+    <tr><td>DNS</td><td>One A record lookup</td><td>Full CNAME chains, AAAA, wildcard detection, and dangling CNAMEs flagged as takeover candidates</td></tr>
+    <tr><td>Reading responses</td><td>Blocked by CORS on hosts you do not control</td><td>Read directly, redirects followed one hop at a time</td></tr>
+    <tr><td>Specifications</td><td>Title and version, when the read succeeds at all</td><td>Path and operation counts, declared auth schemes, every operation that declares no authentication, and the widest object schema</td></tr>
+    <tr><td>OpenID Connect</td><td>Listed as a candidate URL</td><td>Issuer and endpoints parsed, with implicit and password grants and <code>none</code> client authentication flagged</td></tr>
+    <tr><td>GraphQL</td><td>The hostname, nothing more</td><td>An introspection query is sent and the exposed type count reported</td></tr>
+    <tr><td>Headers</td><td>Invisible</td><td>CORS reflection and credentials, version banners, missing HSTS</td></tr>
+  </table>
+  </div>
+
+  <p>The blue <strong>verify manually</strong> tier mostly disappears under the server engine, because the whole reason a finding landed there was that your browser could not read it. What remains blue is what is genuinely unknown: a request that timed out, a host that errored, or a name whose CNAME target has been deprovisioned.</p>
+
+  <p>Two things it does deliberately, so the output does not mislead you. A host that answers identically on every probed path is reported once as host-wide behaviour rather than as a dozen protected endpoints, because a CDN returning 403 to everything is one fact, not twelve. And on a domain with a wildcard DNS record, names that match only the wildcard are dropped, since otherwise every guess would appear to resolve.</p>
+
+  <div class="note-box">
+    <p>The container binds to localhost only and runs unprivileged. Before it opens any connection it resolves the hostname and rejects private, loopback, link-local and cloud metadata addresses, and it re-checks on every redirect, so a hostile DNS record cannot turn your scanner into a proxy into your own network. Set <code>SCOPE_ALLOWLIST</code> in <code>docker-compose.yml</code> to restrict it to domains you are authorised to test. It stays passive throughout: it reads what is published and sends one GraphQL introspection query. It does not authenticate, fuzz, or attempt any exploit.</p>
+  </div>
 
   <h2>Exporting a run</h2>
   <p><strong>Copy results as JSON</strong> gives you the whole run in a stable shape, suitable for saving alongside a report or diffing against a later scan:</p>
   <pre>{
   "domain": "example.com",
+  "engine": "browser",
   "documented": [ { "provider": "...", "title": "...", "spec": "..." } ],
   "live": [ "api.example.com", "auth.example.com" ],
   "candidate": [ "https://api.example.com/openapi.json" ],

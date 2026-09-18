@@ -236,6 +236,16 @@
   }
   .owasp-chips a:hover{border-color:var(--danger)}
 
+  .engine{display:none;margin:12px 0 0;font-size:12.5px;color:var(--text-dim)}
+  .engine.on{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+  .engine a{color:var(--text-dim)}
+  .engine .pill{
+    font-family:var(--mono);font-size:10px;font-weight:600;letter-spacing:.04em;
+    text-transform:uppercase;border-radius:5px;padding:3px 7px;
+    border:1px solid #333;color:var(--text-faint);
+  }
+  .engine .pill.on{border-color:#2d4a35;background:#14241a;color:var(--documented)}
+
   header p.subnav{margin:-14px 0 22px;font-size:12.5px}
   header p.subnav a{color:var(--live);text-decoration:none;border-bottom:1px solid #4d3c18}
   header p.subnav a:hover{border-bottom-color:var(--live)}
@@ -265,8 +275,10 @@
     <button id="run">Map surface</button>
   </div>
 
+  <p class="engine" id="engine"></p>
+
   <p class="note">
-    A browser cannot crawl a domain the way a server can. Cross-origin rules (CORS) stop it from reading responses off hosts you do not control, so anything unreadable is reported as a candidate to check yourself, not a confirmed API. There is no backend. Every lookup runs from your browser and your own IP, so nothing you search is logged by this page. The DNS resolvers and the public directory it queries do see the domain.
+    A browser cannot crawl a domain the way a server can. Cross-origin rules (CORS) stop it from reading responses off hosts you do not control, so anything unreadable is reported as a candidate to check yourself, not a confirmed API. The hosted version has no backend: every lookup runs from your browser and your own IP, so nothing you search is logged by this page. The DNS resolvers and the public directory it queries do see the domain. Run the optional <a href="https://github.com/tbgh011/API-surface-mapper/tree/main/server">server engine</a> in Docker and those limits lift: it enumerates certificate transparency logs, reads responses directly, and parses the specs it finds.
   </p>
 
   <div class="legend" aria-hidden="true">
@@ -297,7 +309,7 @@
 
   <footer>
     Evidence sources: DNS-over-HTTPS (Google, Cloudflare) for host resolution, the
-    <a href="https://apis.guru" target="_blank" rel="noopener">APIs.guru</a> open directory for documented specs, and direct fetches for readable spec files. For exhaustive discovery (full subdomain enumeration, authenticated crawling, response inspection) you need a server-side scanner.
+    <a href="https://apis.guru" target="_blank" rel="noopener">APIs.guru</a> open directory for documented specs, and direct fetches for readable spec files. With the server engine running it adds certificate transparency logs (crt.sh, Cert Spotter), full DNS including CNAME chains and wildcard detection, unrestricted response reads, OpenAPI and OpenID Connect parsing, GraphQL introspection, and CORS policy inspection. Authenticated crawling is out of scope for both.
     <br><br>
     New here? Read the <a href="quickstart-guide.html">quickstart guide</a>.
   </footer>
@@ -460,24 +472,51 @@
     return g;
   }
 
+  // Row text can come from a remote spec file or response header, so it is
+  // escaped rather than trusted as markup.
+  const esc = (s) => String(s == null ? "" : s)
+    .replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;").replace(/'/g, "&#39;");
+
+  // meta is a list of [key, value] pairs. Empty values are dropped.
+  function metaHtml(meta){
+    if (!Array.isArray(meta)) return "";
+    const parts = meta
+      .filter(pair => Array.isArray(pair) && pair[1] !== "" && pair[1] != null)
+      .map(([k, v]) => `<span class="k">${esc(k)}</span> ${esc(v)}`);
+    return parts.join(" &nbsp; ");
+  }
+
+  function addNote(groupId, text){
+    const body = document.querySelector("#gb-" + groupId);
+    if (!body) return;
+    const p = document.createElement("p");
+    p.className = "blurb";
+    p.style.margin = "10px 0 0";
+    p.textContent = text;
+    body.appendChild(p);
+  }
+
   function addRow(groupId, tier, { url, label, meta, owasp }){
     const body = document.querySelector("#gb-" + groupId);
     if (!body) return;
     const row = document.createElement("div");
     row.className = "row " + tier;
-    const safeUrl = url.replace(/"/g, "&quot;");
+    const safeUrl = esc(url);
     let chips = "";
     if (owasp && owasp.length){
       chips = `<div class="owasp-chips">` + owasp.map(id => {
         const o = OWASP[id];
+        if (!o) return "";
         state.triggered.add(id);
         return `<a href="${o.url}" target="_blank" rel="noopener" title="${o.title}">${o.code}</a>`;
       }).join("") + `</div>`;
     }
+    const metaStr = metaHtml(meta);
     row.innerHTML =
       `<div class="main">` +
-        `<a class="url" href="${safeUrl}" target="_blank" rel="noopener">${label || url}</a>` +
-        (meta ? `<div class="meta">${meta}</div>` : "") +
+        `<a class="url" href="${safeUrl}" target="_blank" rel="noopener">${esc(label || url)}</a>` +
+        (metaStr ? `<div class="meta">${metaStr}</div>` : "") +
         chips +
       `</div>` +
       `<span class="tag ${tier}">${tier === "documented" ? "documented" : tier === "live" ? "live host" : "verify"}</span>`;
@@ -516,10 +555,14 @@
     let hits = 0;
     for (const [key, entry] of Object.entries(apisGuruCache)){
       const provider = key.split(":")[0].toLowerCase();
+      // Compare registrable labels, not substrings. A bare includes() matches
+      // apis.guru against apisetu.gov.in and buries the real entry under forty
+      // unrelated ones.
+      const providerSld = provider.split(".").slice(-2, -1)[0] || provider;
       const match = provider === domain
         || provider.endsWith("." + domain)
         || domain.endsWith("." + provider)
-        || (sld.length >= 4 && provider.includes(sld));
+        || providerSld === sld;
       if (!match) continue;
       const versions = entry.versions || {};
       const pref = entry.preferred && versions[entry.preferred] ? versions[entry.preferred]
@@ -532,8 +575,7 @@
       addRow("dir", "documented", {
         url: spec || docUrl,
         label: info.title || key,
-        meta: `<span class="k">provider</span> ${provider}` +
-              (spec ? ` &nbsp; <span class="k">spec</span> ${spec}` : "")
+        meta: [["provider", provider], ["spec", spec || ""]]
       });
       hits++;
       if (hits >= 40) break;
@@ -559,7 +601,7 @@
         addRow("hosts", "live", {
           url: "https://" + host,
           label: host,
-          meta: res.via ? `<span class="k">cname</span> ${res.via}` : `<span class="k">resolves</span> A record`,
+          meta: res.via ? [["cname", res.via]] : [["resolves", "A record"]],
           owasp: owaspForHost(host)
         });
         bumpCounts();
@@ -586,15 +628,15 @@
         if (!r.ok) return; // reachable but not a served spec
         const ct = (r.headers.get("content-type") || "");
         const text = await r.text();
-        let meta = `<span class="k">readable</span> ${r.status} ${ct.split(";")[0] || ""}`;
+        const meta = [["readable", `${r.status} ${ct.split(";")[0] || ""}`.trim()]];
         if (ct.includes("json") || text.trim().startsWith("{")){
           try {
             const j = JSON.parse(text);
             const title = j.info && j.info.title;
             const ver = j.info && j.info.version;
             const servers = Array.isArray(j.servers) ? j.servers.map(s => s.url).filter(Boolean) : [];
-            if (title) meta += ` &nbsp; <span class="k">title</span> ${title}${ver ? " v" + ver : ""}`;
-            if (servers.length) meta += ` &nbsp; <span class="k">servers</span> ${servers.join(", ")}`;
+            if (title) meta.push(["title", `${title}${ver ? " v" + ver : ""}`]);
+            if (servers.length) meta.push(["servers", servers.join(", ")]);
           } catch (_) {}
         }
         anyReadable = true;
@@ -609,7 +651,7 @@
           state.candidate.push(url);
           addRow("specs", "candidate", {
             url, label: url,
-            meta: `<span class="k">blocked by CORS or not served</span> verify with the commands below`,
+            meta: [["blocked by CORS or not served", "verify with the commands below"]],
             owasp: owaspForCandidate(url)
           });
           bumpCounts();
@@ -701,6 +743,126 @@
     g.classList.add("on");
   }
 
+  // ---- server engine ------------------------------------------------------
+
+  // The optional Python backend in server/ serves this page and its API from the
+  // same origin, so it is found by asking. When it is not there, nothing below
+  // runs and the browser engine behaves exactly as it always did.
+  const ENGINE = { available:false, use:true, info:null };
+
+  async function detectServer(){
+    try {
+      const r = await fetchT(new URL("api/healthz", document.baseURI).href, {}, 2500);
+      if (!r.ok) return;
+      const j = await r.json();
+      if (j && j.ok && j.engine === "server"){
+        ENGINE.available = true;
+        ENGINE.info = j;
+      }
+    } catch (_) { /* no backend; the browser engine is the whole tool */ }
+    renderEngine();
+  }
+
+  function renderEngine(){
+    const box = $("engine");
+    if (!ENGINE.available){ box.classList.remove("on"); box.innerHTML = ""; return; }
+    box.classList.add("on");
+    box.innerHTML = ENGINE.use
+      ? `<span class="pill on">Server engine</span> Certificate transparency, full DNS, direct reads, parsed specs. <a href="#" data-toggle>Use browser only</a>`
+      : `<span class="pill">Browser only</span> A server engine is running on this host. <a href="#" data-toggle>Switch to it</a>`;
+    box.querySelector("[data-toggle]").addEventListener("click", (e) => {
+      e.preventDefault();
+      ENGINE.use = !ENGINE.use;
+      renderEngine();
+    });
+  }
+
+  function parseFrame(chunk){
+    let event = "message";
+    const data = [];
+    for (const line of chunk.split("\n")){
+      if (line.startsWith("event:")) event = line.slice(6).trim();
+      else if (line.startsWith("data:")) data.push(line.slice(5).trim());
+    }
+    try { return { event, data: JSON.parse(data.join("\n")) }; }
+    catch (_) { return null; }
+  }
+
+  // Returns true when the stream is finished.
+  function applyServerEvent(frame){
+    if (!frame) return false;
+    const d = frame.data || {};
+    switch (frame.event){
+      case "status":
+        setStatus(d.text, d.pct);
+        return false;
+      case "group":
+        group(d.id, d.title, d.blurb);
+        return false;
+      case "note":
+        addNote(d.group, d.text);
+        return false;
+      case "finding":
+        // The summary stats are counted the same way the browser engine counts
+        // them, so the labels stay true: "live hosts" means hostnames, not any
+        // row that happens to be amber. Endpoint and header findings are amber
+        // too, and they are shown in their own groups rather than inflating a
+        // count they do not belong to. This also keeps the exported JSON's
+        // "live" array a plain list of hostnames.
+        if (d.tier === "documented") state.documented.push({ title:d.label, url:d.url });
+        else if (d.tier === "candidate") state.candidate.push(d.url);
+        else if (d.group === "hosts") state.live.push(d.label || d.url);
+        addRow(d.group, d.tier, { url:d.url, label:d.label, meta:d.meta, owasp:d.owasp });
+        bumpCounts();
+        return false;
+      case "error":
+        throw new Error(d.message || "The server engine reported a failure.");
+      case "done":
+        return true;
+      default:
+        return false;
+    }
+  }
+
+  async function runServerEngine(domain){
+    const url = new URL("api/scan", document.baseURI);
+    url.searchParams.set("domain", domain);
+    const r = await fetch(url.href, { headers:{ accept:"text/event-stream" } });
+    if (!r.ok){
+      let message = `The server engine returned ${r.status}.`;
+      try { const j = await r.json(); if (j && j.error) message = j.error; } catch (_) {}
+      const err = new Error(message);
+      // A 4xx is the server declining on purpose (bad domain, out of scope,
+      // rate limited). Those are worth showing, not worth retrying differently.
+      err.refusal = r.status >= 400 && r.status < 500;
+      throw err;
+    }
+    const reader = r.body.getReader();
+    const decoder = new TextDecoder();
+    let buffer = "";
+    for (;;){
+      const { value, done } = await reader.read();
+      if (done) return;
+      buffer += decoder.decode(value, { stream:true });
+      let idx;
+      while ((idx = buffer.indexOf("\n\n")) !== -1){
+        const chunk = buffer.slice(0, idx);
+        buffer = buffer.slice(idx + 2);
+        if (applyServerEvent(parseFrame(chunk))){
+          reader.cancel().catch(() => {});
+          return;
+        }
+      }
+    }
+  }
+
+  function resetResults(){
+    el.results.innerHTML = "";
+    state.documented = []; state.live = []; state.candidate = [];
+    state.triggered = new Set();
+    bumpCounts();
+  }
+
   // ---- orchestration ------------------------------------------------------
 
   async function run(){
@@ -712,32 +874,50 @@
     }
     el.domain.value = domain;
     el.run.disabled = true;
-    el.results.innerHTML = "";
     el.guidance.innerHTML = "";
     el.guidance.classList.remove("on");
     el.actions.classList.remove("on");
-    state.documented = []; state.live = []; state.candidate = []; state.triggered = new Set();
-    bumpCounts();
+    resetResults();
     el.summary.classList.add("on");
     setStatus("Checking the public API directory...", 8);
 
     const sld = domain.split(".").slice(-2, -1)[0] || domain;
+    let engineUsed = "browser";
 
     try {
-      await directoryLookup(domain, sld);
-      const liveHosts = await subdomainProbe(domain);
-      await descriptorProbe(domain, liveHosts);
+      if (ENGINE.available && ENGINE.use){
+        try {
+          await runServerEngine(domain);
+          engineUsed = "server";
+        } catch (e){
+          if (e && e.refusal) throw e;
+          // The backend is present but broke mid-scan. Start clean and finish
+          // the job with the browser engine rather than showing half a scan.
+          resetResults();
+          setStatus("Server engine failed (" + (e && e.message ? e.message : e) +
+                    "). Falling back to the browser engine.", 8);
+        }
+      }
+
+      if (engineUsed === "browser"){
+        await directoryLookup(domain, sld);
+        const liveHosts = await subdomainProbe(domain);
+        await descriptorProbe(domain, liveHosts);
+      }
+
       renderGuidance();
       setStatus(
-        `Done. ${state.documented.length} documented, ${state.live.length} live hosts, ${state.candidate.length} to verify.`,
+        `Done. ${state.documented.length} documented, ${state.live.length} live hosts, ` +
+        `${state.candidate.length} to verify. (${engineUsed} engine)`,
         100
       );
     } catch (e){
       setStatus("Something went wrong during the scan: " + (e && e.message ? e.message : e));
     } finally {
       el.run.disabled = false;
-      lastResults = { domain, documented:state.documented, live:state.live,
-        candidate:state.candidate, owaspReviewAreas:[...state.triggered] };
+      lastResults = { domain, engine:engineUsed, documented:state.documented,
+        live:state.live, candidate:state.candidate,
+        owaspReviewAreas:[...state.triggered] };
       el.actions.classList.add("on");
     }
   }
@@ -750,6 +930,7 @@
   $("copyJson").addEventListener("click", (e) =>
     copy(JSON.stringify(lastResults || {}, null, 2), e.currentTarget));
   el.domain.focus();
+  detectServer();
 })();
 </script>
 </body>
